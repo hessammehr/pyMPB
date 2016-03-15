@@ -12,6 +12,8 @@
 	#You should have received a copy of the GNU General Public License
 	#along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+sys.path.append('../')
 from objects import Rod,Dielectric
 from simulation import Simulation
 from geometry import Geometry
@@ -21,31 +23,34 @@ from graphics import draw_geometry,draw_bandstructure
 from objects import Dielectric,Rod
 
 def basic_test():
-	test_geom = Geometry(1,1,[Rod(0,0,Dielectric('si'), \
+	test_geom = Geometry(1,1,[Rod(0,0,Dielectric(11.8), \
 	occupancy_radius(0.3,1))])
-	sim = Simulation('basic_test',test_geom)
+	sim = Simulation('basic_test', test_geom)
 	sim.runSimulation()
 	sim.postProcess()
 	return True
 	
 def geometry_test():
-	test_geom = wheel(1,1,5,0.3,0,Dielectric('si')\
+	test_geom = wheel(1,1,5,0.3,0,Dielectric(11.8)\
 	,priority='Occupancy')
 	format = 'pdf'
-	draw_geometry(test_geom,'geometry_test',format)
+	draw_geometry(test_geom, 'geometry_test',format)
 	return True
 
 def bs2d_test():
-	test_geom = wheel(1,1,5,0.3,0,Dielectric('si')\
+	test_geom = wheel(1,1,5,0.3,0,Dielectric(11.8)\
 	,priority='Occupancy')
 	draw_geometry(test_geom,'test_2d')
 	test_kspace = KSpace(2,x_res=50,y_res=50)
 	sim = Simulation('test_2d',test_geom,test_kspace,numbands=5, \
 	resolution=64)
-	sim.runSimulation()
+	#sim.runSimulation()
 	sim.postProcess()
-	draw_bandstructure('test_2d',test_kspace,5,filled=False)
+	draw_bandstructure(sim.workingdir + '/test_2d_tm',
+                     test_kspace,5,filled=False)
 	return True
-tests = [geometry_test,basic_test]
+    
+tests = [geometry_test, basic_test]
+long_tests = [bs2d_test]
 
 results = [test() for test in tests]
