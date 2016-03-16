@@ -95,16 +95,17 @@ def draw_rod(index, rod, anisotropic_component=0):
             va='center',
             family='sans-serif'))
 
-def draw_bandstructure(jobname,kspace,band,ext='.csv',format='pdf',\
-filled=True,levels=15,lines=False,labeled=False,legend=False):
+def draw_bandstructure(
+        jobname, mode, kspace, band, ext='.csv', format='pdf', filled=True,
+        levels=15, lines=False, labeled=False, legend=False):
     """
-    TODO: Warning, not tested, might be broken.
-    
     Draw 2D band contour map of one band"""
     #clf()
     fig = plt.figure(figsize=fig_size)
     ax = fig.add_subplot(111,aspect='equal')
-    x,y,z = loadtxt(jobname+ext,delimiter=', ',skiprows=1,usecols=\
+    x,y,z = loadtxt(
+        "{0}_{1}{2}".format(jobname, mode, ext),
+        delimiter=', ',skiprows=1,usecols=\
     (1,2,4+band),unpack=True)
     if kspace.dimensions == 1:
         plt.plot(x,y,z)

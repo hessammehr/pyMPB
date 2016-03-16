@@ -405,14 +405,22 @@ class Simulation(object):
             #print(highlight(text, SchemeLexer(), 
             #                Terminal256Formatter(style='pastie')))
             
-##    def draw_bandstructure(
-##            self, band, filled=True, levels=15, lines=False, labeled=False,
-##            legend=False):
-##        """Draw 2D band contour map of one band"""
-##        jobname = path.join(self.workingdir, self.jobname)
-##        graphics.draw_bandstructure(
-##            jobname, self.kspace, band, filled=filled, levels=levels,
-##            lines=lines, labeled=labeled, legend=legend)
+    def draw_bandstructure(
+            self, band, mode=None, filled=True, levels=15, lines=False, 
+            labeled=False, legend=False):
+        """Draw 2D band contour map of one band"""
+        jobname = path.join(self.workingdir, self.jobname)
+        if mode is None:
+            # default. Draw all modes:
+            modes = self.modes
+        elif isinstance(mode, (tuple, list)):
+            modes = mode
+        else:
+            modes = [mode]
+        for mode in modes:
+            graphics.draw_bandstructure(
+                jobname, mode, self.kspace, band, filled=filled, levels=levels,
+                lines=lines, labeled=labeled, legend=legend)
 
     def draw_field_patterns(self, title='', only_k_slice=None, show=False):
         """ Place all field pattern pngs in one diagram and save it to file.

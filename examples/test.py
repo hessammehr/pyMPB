@@ -19,7 +19,7 @@ from simulation import Simulation
 from geometry import Geometry
 from kspace import KSpace
 from utility import wheel,occupancy_radius
-from graphics import draw_geometry,draw_bandstructure
+from graphics import draw_geometry
 from objects import Dielectric,Rod
 
 def basic_test():
@@ -42,12 +42,11 @@ def bs2d_test():
 	,priority='Occupancy')
 	draw_geometry(test_geom,'test_2d')
 	test_kspace = KSpace(2,x_res=50,y_res=50)
-	sim = Simulation('test_2d',test_geom,test_kspace,numbands=5, \
-	resolution=64)
-	#sim.runSimulation()
+	sim = Simulation(
+            'test_2d', test_geom, test_kspace, numbands=5, resolution=16)
+	sim.runSimulation()
 	sim.postProcess()
-	draw_bandstructure(sim.workingdir + '/test_2d_tm',
-                     test_kspace,5,filled=False)
+	sim.draw_bandstructure(5, filled=False)
 	return True
     
 tests = [geometry_test, basic_test]
