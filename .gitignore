@@ -1,8 +1,9 @@
 # specific to pyMPB project:
 #
 # nothing created by examples:
-examples/*/
-examples/*.pdf
+examples/*
+# except the actual examples:
+!examples/*.py
 
 # vim temporary file
 *~

@@ -25,6 +25,7 @@ from defaults import fig_size, contour_lines, contour_filled, contour_plain,\
     colorbar_style
 from bandplotter import BandPlotter
 import objects
+import log
 
 def draw_geometry(
         geometry,jobname,format='pdf', display=True, block_when_showing=True,
@@ -95,7 +96,7 @@ def draw_rod(index, rod, anisotropic_component=0):
             va='center',
             family='sans-serif'))
 
-def draw_bandstructure(
+def draw_bandstructure_2D(
         jobname, mode, kspace, band, ext='.csv', format='pdf', filled=True,
         levels=15, lines=False, labeled=False, legend=False):
     """
@@ -136,6 +137,7 @@ def draw_bands(
     so that only frequency values are shown where all bands are known.
     Alternatively, a numeric value of crop_y denotes the upper frequency
     value where the plot will be cropped.
+    The band data is loaded from previously saved .csv files.
     
     """
     if custom_plotter is None:
@@ -185,8 +187,9 @@ def draw_dos(jobname, modes, custom_plotter=None, title=''):
         try:
             freqs, dos = loadtxt(fname, delimiter=',', unpack=True)
         except IOError:
-            print ("File not found: {0}\n".format(fname) + 
-                   "Did you save DOS data in the simulation?")
+            log.error("in graphics.draw_dos: "
+                "File not found: {0}\n".format(fname) + 
+                "Did you save DOS data in the simulation?")
             return plotter
         if callnextplot:
             callnextplot=False

@@ -23,17 +23,20 @@ import matplotlib.pyplot as plt
 
 from phc_simulations import TriHolesSlab3D
 from utility import get_gap_bands
+import log
 
 def main():
     minrad = 0.2
     maxrad = 0.4
     radstep = 0.05
-    numsteps = (maxrad - minrad) / radstep + 1
+    numsteps = int((maxrad - minrad) / radstep + 1.5)
     steps = np.linspace(minrad, maxrad, num=numsteps, endpoint=True)
-    print "running simulation with {0:n} radius steps:\n{1}\n\n".format(
-        numsteps, steps)
     
-    for radius in steps:
+    for i, radius in enumerate(steps):
+
+        log.info("running simulation with {0:n} radius steps:\n{1}".format(
+            numsteps, steps) +
+            '\n  ### current step: #{0} ({1}) ###\n'.format(i+1, radius))
 
         sim = TriHolesSlab3D(
             material='SiN',
@@ -49,7 +52,7 @@ def main():
             convert_field_patterns=True)
         
         if not sim:
-            print 'an error occured during simulation.'
+            log.error('an error occured during simulation. See the .out file')
             return
     
         # load te mode band data:
@@ -70,9 +73,12 @@ def main():
         with open("gaps.dat", "a") as f:
             f.write("{0}\t{1}\n".format(radius, gap))
     
-        print '\n ##### radius={0} - success:{1} #####\n\n'.format(
-                radius, sim is not False)
+        log.info('\n ##### radius={0} - success:{1} #####\n\n'.format(
+                radius, sim is not False))
 
+        # reset logger; the next stuff logged is going to next step's file:
+        log.reset_logger()
+        
     data = np.loadtxt('gaps.dat')
     fig = plt.figure()
     ax = fig.add_subplot(111)

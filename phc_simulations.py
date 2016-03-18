@@ -115,13 +115,14 @@ def TriHoles2D(
     if runmode.startswith('c'): # create ctl file
         sim.write_ctl_file()
     elif runmode.startswith('s'): # run simulation
-        error = sim.runSimulation(num_processors=num_processors)
+        error = sim.run_simulation(num_processors=num_processors)
         if error:
             return False
+        # now continue with postprocessing:
         runmode='postpc'
     if runmode.startswith('p'): # postprocess
         # create csv files of data and pngs:
-        sim.postProcess(convert_field_patterns=convert_field_patterns)
+        sim.post_process(convert_field_patterns=convert_field_patterns)
         # save band diagram as pdf&png:
         sim.draw_bands(title=draw_bands_title, crop_y=True)
         # save mode patterns to pdf&png:
@@ -248,13 +249,13 @@ def TriHolesSlab3D(
     if runmode.startswith('c'): # create ctl file
         sim.write_ctl_file()
     elif runmode.startswith('s'): # run simulation
-        error = sim.runSimulation(num_processors=num_processors)
+        error = sim.run_simulation(num_processors=num_processors)
         if error:
             return False
         runmode='postpc'
     if runmode.startswith('p'): # postprocess
         # create csv files of data and pngs:
-        sim.postProcess(convert_field_patterns=convert_field_patterns)
+        sim.post_process(convert_field_patterns=convert_field_patterns)
         # save band diagram as pdf&png:
         sim.draw_bands(title=draw_bands_title, crop_y=0.8)
         # save mode patterns to pdf&png:

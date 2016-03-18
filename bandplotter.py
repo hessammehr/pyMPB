@@ -12,7 +12,7 @@
     #You should have received a copy of the GNU General Public License
     #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
+from __future__ import division, print_function
 
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -25,6 +25,7 @@ import numpy as np
 from fractions import Fraction 
 from itertools import cycle
 from utility import get_intersection_knum
+import log
 
 """last edit 2016-01-24:
 - added add_band_gap_rectangle
@@ -287,16 +288,17 @@ class BandPlotter:
             xaxisformatter = event.mouseevent.inaxes.xaxis.major.formatter
         except AttributeError:
             return
-        print thisline.get_label(), 'mode(s): ',
+        print(thisline.get_label() + ' mode(s): ', end='')
         if isinstance(xaxisformatter, KvecFormatter):
             for i in ind:
-                print 'k_index={0:.0f}, freq={1}; '.format(
-                    xdata[i] + 1, ydata[i]),
+                print('k_index={0:.0f}, freq={1}; '.format(
+                    xdata[i] + 1, ydata[i]), end='')
         else:
             for i in ind:
                 omega = ydata[i] * g_speed_of_light * 2.0 * np.pi / self._fundlength
                 wlen = self._fundlength / ydata[i]
-                print 'k={0}, freq={1}, omega={2} Hz, wlen={3} nm; '.format(xdata[i], ydata[i], omega, wlen),
+                print('k={0}, freq={1}, omega={2} Hz, wlen={3} nm; '.format(
+                        xdata[i], ydata[i], omega, wlen), end = '')
 
         #plt.ion()          
         #fig = plt.figure('mode pattern', figsize=(6, 2))
@@ -306,7 +308,7 @@ class BandPlotter:
         # fmeep = w a / 2 pi c
         # w = fmeep 2 pi c / a
         # wlen = c / freq = c 2 pi / omega = c 2 pi / (2 pi c fmeep / a) = a / fmeep 
-        print 
+        print() 
 
     def add_light_cone(
             self, color = 'gray', alpha=0.5):

@@ -72,6 +72,9 @@ template = '''%(initcode)s
 #~ 
 #~ color_map_dir = '/usr/share/h5utils/colormaps'
 
+log_format = "%(asctime)s %(levelname)s: %(message)s"
+log_datefmt = "%d.%m.%Y %H:%M:%S"
+
 fig_size = (6,6)
 contour_lines = {'colors':'k','linestyles':['dashed','solid'], 'linewidths':1.0}
 contour_plain = {'linewidths':1.0}

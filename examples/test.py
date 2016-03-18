@@ -26,8 +26,8 @@ def basic_test():
 	test_geom = Geometry(1,1,[Rod(0,0,Dielectric(11.8), \
 	occupancy_radius(0.3,1))])
 	sim = Simulation('basic_test', test_geom)
-	sim.runSimulation()
-	sim.postProcess()
+	sim.run_simulation()
+	sim.post_process()
 	return True
 	
 def geometry_test():
@@ -44,9 +44,9 @@ def bs2d_test():
 	test_kspace = KSpace(2,x_res=50,y_res=50)
 	sim = Simulation(
             'test_2d', test_geom, test_kspace, numbands=5, resolution=16)
-	sim.runSimulation()
-	sim.postProcess()
-	sim.draw_bandstructure(5, filled=False)
+	sim.run_simulation()
+	sim.post_process()
+	sim.draw_bandstructure_2D(5, filled=False)
 	return True
     
 tests = [geometry_test, basic_test]

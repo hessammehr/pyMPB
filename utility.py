@@ -23,6 +23,8 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
+import log
+
 def occupancy_radius(occupancy,n,cell_area = 1.0):
     return sqrt(cell_area*occupancy/n/pi)
 
@@ -175,6 +177,9 @@ def distribute_pattern_images(
     filenames = glob1(imgfolder, "*[edh].*.png")
     if not filenames:
         return 0
+    
+    log.info("saving field patterns to file(s): %s" % dstfile)
+    
     # all files should have same field component, direction and mode,
     # so just read them representatively from first filename:
     first = filenames[0]
@@ -218,8 +223,8 @@ def distribute_pattern_images(
         m = retest.match(fname)
         if not m:
             # no match found, maybe some wrong stray file. Warn and ignore:
-            print 'Warning in distribute_pattern_images: ' \
-                  'found non-matching file:', fname, 'in', imgfolder
+            log.warning('Warning in distribute_pattern_images: ' \
+                  'found non-matching file:', fname, 'in', imgfolder)
             continue
         d = m.groupdict()
         knums.add(int(d['knum']))
@@ -283,8 +288,8 @@ def distribute_pattern_images(
                 fname = fname_base.format(
                     bandnum=bandnum, knum=knum, ri=comp)
                 if not path.isfile(fname):
-                    print 'Warning in distribute_pattern_images: ' \
-                          'could not find file:', fname
+                    log.warning( 'Warning in distribute_pattern_images: ' \
+                          'could not find file:', fname)
                     continue
                 x0 = ik * nc + ic
                 xl = x0 - ext_thin_border_x if ic else x0 - ext_thick_border_x
