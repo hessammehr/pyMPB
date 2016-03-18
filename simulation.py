@@ -5,7 +5,7 @@
     #(at your option) any later version.
 
     #This program is distributed in the hope that it will be useful,
-    #but WITHOUT ANY WARRANTY; without even the imKvecFormatterplied warranty of
+    #but WITHOUT ANY WARRANTY; without even the implied warranty of
     #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     #GNU General Public License for more details.
 
@@ -120,10 +120,12 @@ class Simulation(object):
                  ''.join(['\n  {0}={1}'.format(key, environ[key]) for key in 
                          new_environ_dict.keys()]))
     
-        log.info('pyMPB Simulation created with following properties:' + 
-                 ''.join(['\npyMPBprop: {0}={1}'.format(key, val) for key, val in 
-                         self.__dict__.items()]))
-        #TODO log all parameters of Simulation object in such a way that it can be recreated
+        log.info(
+            'pyMPB Simulation created with following properties:' + 
+            ''.join(['\npyMPBprop: {0}={1}'.format(key, val) for key, val in 
+                self.__dict__.items()]))
+        #TODO log all parameters of Simulation object in such a way that it can 
+        # be recreated exactly.
         # Maybe even add relevant parts of data.py and defaults.py
 
                 
@@ -383,7 +385,9 @@ class Simulation(object):
         # but now we have a gap extraction method in utility.py, which can 
         # also take the light_cone into consideration:
         # following does not find all Gaps in output, only one for each mode  
-        #gaps = findall(r'^(.*)freqs:, .+$(?:\n.*)+?\n(Gap from band (.+)\((.+)\) to band (.+)\((.+)\), (.+)%\n)+', 
+        #gaps = findall(
+        #       r'^(.*)freqs:, .+$(?:\n.*)+?\n(Gap from band (.+)\((.+)\)'
+        #       r' to band (.+)\((.+)\), (.+)%\n)+', 
         #              pp_buffer, re.MULTILINE)
         #for line in result:
         #    print line
