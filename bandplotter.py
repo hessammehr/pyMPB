@@ -22,7 +22,7 @@ else:
     from matplotlib.axes import _process_plot_format
 #from matplotlib.widgets import Slider, RadioButtons
 import numpy as np
-from fractions import Fraction 
+from fractions import Fraction
 from itertools import cycle
 from utility import get_intersection_knum
 import log
@@ -30,13 +30,13 @@ import log
 """last edit 2016-01-24:
 - added add_band_gap_rectangle
 - BandPlotter can be created without knowing the number of plots beforehand
-- added automatic color cycle, so multiple calls to plot_bands lead to 
+- added automatic color cycle, so multiple calls to plot_bands lead to
   multiple colors, one color for each call to plot_bands
 - add_band_gap_rectangle uses last plotted color if no color is given
 - possibility to automatically crop y before hightest band
 - added reuse_prev_fig (default: True) to constructor parameters.
 - moved crop_y from __init__ to plot_bands
-- possiblity to specify an upper y-value where to crop manually 
+- possiblity to specify an upper y-value where to crop manually
 - added add_band_gap_manual and stop_at_light_line parameter
 - removed self._extra_y_padding, too chaotic
 """
@@ -90,9 +90,9 @@ class BandPlotter:
         MPB simulation, usually the lattice constant;
         figure_size is the figure size in inches (x,y-tuple);
         numrows is the number of subplot rows in the figure.
-        Provide a unique figure_name to create a new figure, or reuse the 
+        Provide a unique figure_name to create a new figure, or reuse the
         same figure_name for multiple plots to reuse figures.
-        
+
         """
         self._fig = plt.figure(figure_name, figsize = figure_size)
         self._fig.clf()
@@ -101,15 +101,15 @@ class BandPlotter:
         self._numrows = max(numrows, 1)
         self._axes = []
         # fundamental lengthscale (i.e. a) in nm (only used in _onpick):
-        self._fundlength = fundlength 
+        self._fundlength = fundlength
         self._crop_y = False
         self._crop_y_val = None
-        self.next_plot()  
-        
+        self.next_plot()
+
     def set_num_rows(self, numrows):
         self._numrows = max(numrows, 1)
         self._distribute_subplots()
-        
+
     def _get_direction_string(self, vec3):
         t = tuple(vec3)
         if t in self._directions:
@@ -129,7 +129,7 @@ class BandPlotter:
                     labels.append(dstr)
                     ticks.append(i)
         elif num_labels > 0:
-            
+
             num = len(banddata) - 1
             step = np.floor(num / (num_labels-1))
             ticks = np.arange(0, num+1, step)
@@ -167,7 +167,7 @@ class BandPlotter:
         High symmetry points will be labeled.
         x_data_index of 0, 1, 2 and 3 corresponds to kx-, ky-, kz-components
         and magnitude of k, respectively.
-        If crop_y is true (default), the y-axis (frequency) will be limited 
+        If crop_y is true (default), the y-axis (frequency) will be limited
         so that only frequency values are shown where all bands are known.
         Alternatively, a numeric value of crop_y denotes the upper frequency
         value where the plot will be cropped.
@@ -179,7 +179,7 @@ class BandPlotter:
                 self._crop_y_val = banddata[:,-1].min()
             else:
                 self._crop_y_val = crop_y
-            
+
         return self.plot_general(
             banddata[:, 4:], x_data_index, banddata[:, :4], formatstr,
             picker, label, **keyargs)
@@ -231,15 +231,15 @@ class BandPlotter:
         else:
             # automatic cropping to maximum data:
             self._maxy = max(self._maxy, data.max())
-            
+
         self._miny = min(self._miny, data.min())
-        
-        if (not keyargs.has_key('color') and not keyargs.has_key('c') and
+
+        if (not 'color' in keyargs and not 'c' in keyargs and
                 _process_plot_format(formatstr)[-1] is None):
             # if no color for the plot is given, use automatic coloring:
-            keyargs['color'] = self._colors.next()
-        
-        if keyargs.has_key('c'):
+            keyargs['color'] = next(self._colors)
+
+        if 'c' in keyargs:
             self._last_color = keyargs['c']
         else:
             self._last_color = keyargs['color']
@@ -300,15 +300,15 @@ class BandPlotter:
                 print('k={0}, freq={1}, omega={2} Hz, wlen={3} nm; '.format(
                         xdata[i], ydata[i], omega, wlen), end = '')
 
-        #plt.ion()          
+        #plt.ion()
         #fig = plt.figure('mode pattern', figsize=(6, 2))
         #ax = fig.add_subplot(121) #put mode pattern image here
         #ax = fig.add_subplot(122)
-              
+
         # fmeep = w a / 2 pi c
         # w = fmeep 2 pi c / a
-        # wlen = c / freq = c 2 pi / omega = c 2 pi / (2 pi c fmeep / a) = a / fmeep 
-        print() 
+        # wlen = c / freq = c 2 pi / omega = c 2 pi / (2 pi c fmeep / a) = a / fmeep
+        print()
 
     def add_light_cone(
             self, color = 'gray', alpha=0.5):
@@ -326,7 +326,7 @@ class BandPlotter:
         self._ax.set_ylim(self._miny, self._maxy)
 
     def add_band_gap_rectangle(
-            self, after_band_num, color=None, alpha=0.5, 
+            self, after_band_num, color=None, alpha=0.5,
             stop_at_light_line=False):
         if self._last_data is None:
             raise ValueError(
@@ -338,7 +338,7 @@ class BandPlotter:
         y_bottom = max(self._last_data[:,after_band_num - 1])
         y_top = min(self._last_data[:,after_band_num])
         return self.add_band_gap_rectangle_manual(
-            y_bottom, y_top, color, alpha, 
+            y_bottom, y_top, color, alpha,
             self._last_kdata if stop_at_light_line[:, 3] else None)
 
     def add_band_gap_rectangle_manual(
@@ -354,12 +354,12 @@ class BandPlotter:
         gapsize = h / center
         gaptext='gap size: {0:.2f}%'.format(gapsize * 100)
         if light_line is None:
-            x_left = self._x_data[0] 
+            x_left = self._x_data[0]
             x_right = self._x_data[-1]
             w = x_right - x_left
-            self._ax.add_patch( 
-                mpl.patches.Rectangle((x_left, from_freq), width=w, height=h, 
-                                      color=color, alpha=alpha)) 
+            self._ax.add_patch(
+                mpl.patches.Rectangle((x_left, from_freq), width=w, height=h,
+                                      color=color, alpha=alpha))
             self._ax.add_artist(
                 mpl.text.Text(text=gaptext, x=(x_left + x_right)/2, y=center,
                               horizontalalignment='center',
@@ -405,7 +405,7 @@ class BandPlotter:
                 hir = lor = get_intersection_knum(
                     light_line[knum-1], light_line[knum], from_freq) + knum - 1
                 pts.append((hil, from_freq))
-            
+
             self._ax.add_patch(
                 mpl.patches.Polygon(pts, color=color, alpha=alpha))
             self._ax.add_artist(
@@ -431,12 +431,12 @@ class BandPlotter:
         else:
             numcols = int(np.ceil(self._numplots / rows))
             rows = min(rows, self._numplots)
-        
+
         for i, ax in enumerate(self._axes):
             ax.change_geometry(rows, numcols, i + 1)
-            
+
         self._fig.tight_layout()
-            
+
     def next_plot(self):
         self._numplots += 1
         # add subplot somewhere where no other is yet. Final position
@@ -463,7 +463,7 @@ class BandPlotter:
                 filteredlabels.append(label)
                 filteredhandles.append(handles[i])
         plt.legend(filteredhandles, filteredlabels, loc=loc)
-        
+
     def set_plot_title(self, title):
         self._ax.set_title(title, size='x-large')
         self._fig.tight_layout()
@@ -485,7 +485,7 @@ def main():
 
     g_filename = '../sims/pympbtest/TriHoles2D_test.out'
     g_filename2 = '../sims/151116_TriPhC/2D_1BZ/out'
-    
+
     g_fnames = [g_filename, g_filename2]
     g_xdataindices = [-1, -1]
     numplots = 2
@@ -494,12 +494,12 @@ def main():
     plotter = BandPlotter()
     for i, fname in enumerate(g_fnames[:numplots]):
         reader = MPBOutputReader(fname)
-        
+
         if reader.has_multiple_bandtypes():
             plotter.plot_bands(reader.get_data('tm'),
                 formatstr = 'bo-', x_data_index = g_xdataindices[i],
                 label='TM')
-            plotter.add_band_gap_rectangle([3, 3][i], color='blue')        
+            plotter.add_band_gap_rectangle([3, 3][i], color='blue')
             plotter.plot_bands(reader.get_data('te'),
                 formatstr = 'ro-', x_data_index = g_xdataindices[i],
                 label='TE')
@@ -509,17 +509,17 @@ def main():
             plotter.plot_bands(reader.get_data(),
                 x_data_index = g_xdataindices[i],
                 label=reader.get_band_types()[0])
-            plotter.add_band_gap_rectangle(1)        
-            
-            
+            plotter.add_band_gap_rectangle(1)
+
+
         #plotter.add_light_cone(alpha = 0.7)
 ##        if i == 1:
 ##            plotter._ax.set_xlim(0.4, 0.5)
 ##            plotter._ax.set_ylim(0.3, plotter._maxy)
 
-        
+
         plotter.set_plot_title(
-            ['this folder', 
+            ['this folder',
             'trapezoidal SiN holes r0.375 2D'][i])
         plotter.add_legend()
         if i < numplots - 1:
