@@ -172,7 +172,8 @@ def distribute_pattern_images(
     will be added. Specify a tuple (from, to) to only include those (indices
     into the list of found k-vecs, inclusive).
     """
-    assert(path.isdir(imgfolder))
+    if not path.isdir(imgfolder):
+        return 0
     # make list of all field pattern h5 files:
     filenames = glob1(imgfolder, "*[edh].*.png")
     if not filenames:

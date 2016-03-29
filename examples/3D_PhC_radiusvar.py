@@ -42,10 +42,10 @@ def main():
             material='SiN',
             radius=radius,
             thickness=0.8,
-            numbands=8, 
-            k_interpolation=31, 
-            resolution=32, 
-            mesh_size=7,
+            numbands=4,#8,
+            k_interpolation=5,#31,
+            resolution=16,#32,
+            mesh_size=3,#7,
             supercell_z=6,
             runmode='sim',
             num_processors=2,
@@ -55,8 +55,8 @@ def main():
             log.error('an error occured during simulation. See the .out file')
             return
     
-        # load te mode band data:
-        fname = path.join(sim.workingdir, sim.jobname + '_te.csv')
+        # load zeven mode band data:
+        fname = path.join(sim.workingdir, sim.jobname + '_zeven.csv')
         data = np.loadtxt(fname, delimiter=',', skiprows=1)
         gapbands = get_gap_bands(data[:, 5:])
         
@@ -73,8 +73,7 @@ def main():
         with open("gaps.dat", "a") as f:
             f.write("{0}\t{1}\n".format(radius, gap))
     
-        log.info('\n ##### radius={0} - success:{1} #####\n\n'.format(
-                radius, sim is not False))
+        log.info('\n ##### radius={0} - success! #####\n\n'.format(radius))
 
         # reset logger; the next stuff logged is going to next step's file:
         log.reset_logger()

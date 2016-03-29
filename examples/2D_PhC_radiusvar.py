@@ -41,7 +41,7 @@ def main():
         sim = TriHoles2D(
             material='SiN',
             radius=radius,
-            numbands=4, 
+            numbands=4,#8,
             k_interpolation=5,#31, 
             resolution=16, 
             mesh_size=7,
@@ -71,8 +71,7 @@ def main():
         with open("gaps.dat", "a") as f:
             f.write("{0}\t{1}\n".format(radius, gap))
     
-        log.info('\n ##### radius={0} - success:{1} #####\n\n'.format(
-                radius, sim is not False))
+        log.info('\n ##### radius={0} - success! #####\n\n'.format(radius))
         
         # reset logger; the next stuff logged is going to next step's file:
         log.reset_logger()

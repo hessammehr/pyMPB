@@ -23,6 +23,7 @@ import re
 from defaults import *
 import graphics
 from datetime import datetime
+import time
 from glob import glob1
 from utility import distribute_pattern_images
 import log
@@ -30,62 +31,118 @@ import log
 class Simulation(object): 
     def __init__(
             self, jobname, geometry, kspace=default_kspace,
-            initcode=default_initcode, postcode=default_postcode,
-            runcode=default_runcode, resolution=default_resolution, 
-            numbands=default_numbands, work_in_subfolder=True,
-            quiet=isQuiet):
-                
+            resolution=default_resolution, mesh_size=default_mesh_size,
+            numbands=default_numbands, initcode=default_initcode,
+            runcode=default_runcode, postcode=default_postcode,
+            work_in_subfolder=True, clear_subfolder=True,
+            logger=True, quiet=isQuiet):
+        """Create a simulation object with all parameters describing the
+        simulation, including a unique jobname (all generated filenames will
+        include this name), the geometry (pyMPB Geometry object), the kspace
+        (a pyMPB KSpace object), the resolution, mesh_size (see MPB docs),
+        number of bands to calculate and some optional strings with Scheme
+        code which will be added to the MPB .ctl file as initialization code
+        (initcode), as run commands (runcode) and as code executed after the
+        simulation (postcode).
+
+        If work_in_subfolder is True (default), all simulation and log output
+        will be placed in a separate subdirectory called like the jobname. Set
+        clear_subfolder to True (default) if you want this subfolder to be
+        emptied (will make backup if there is an old folder with the same name).
+        clear_subfolder should be False if you want to do postprocessing on
+        existing simulation data.
+
+        If logger is True (default), a jobname.log file will be created with
+        all pyMPB output and errors. This output will also go to stdout if
+        quiet is False. Alternatively, set logger to a customized logger (any
+        object with log(level, msg, *args, **kwargs) method).
+
+        """
+
         self.jobname = jobname
         self.geometry = geometry
         self.kspace = kspace
         self.initcode = initcode
         self.postcode = postcode
         self.resolution = resolution
+        self.meshsize = mesh_size
         self.numbands = numbands
         self.quiet = quiet
         self.runcode = runcode
-        
+
         self.work_in_subfolder = work_in_subfolder
+        self.clear_subfolder = clear_subfolder
         if work_in_subfolder:
             self.workingdir = path.abspath(path.join(path.curdir, jobname))
         else:
             self.workingdir = path.abspath(path.curdir)
-        
+
         # the .ctl file that MPB will use:
         self.ctl_file = jobname + '.ctl'
+        # a date & time stamp added to log and output filenames:
+        dtstamp = ('_{0.tm_year}-{0.tm_mon:02}-{0.tm_mday:02}'
+                   '_{0.tm_hour:02}-{0.tm_min:02}-'
+                   '{0.tm_sec:02}').format(time.localtime())
         # the output file, where all MPB output will go:
-        self.out_file = path.join(self.workingdir, jobname + '.out')
+        self.out_file = path.join(self.workingdir, jobname + dtstamp + '.out')
         # a log file, where information from pyMPB will go:
-        self.log_file = path.join(self.workingdir, jobname + '.log')
+        self.log_file = path.join(self.workingdir, jobname + dtstamp + '.log')
         # the file where MPB usually saves the dielectric:
         self.eps_file =  path.join(self.workingdir, 'epsilon.h5')
-        
+
         # logger is not setup yet, because the log file might be placed in a
         # subfolder that still needs to be created. But, I want to log that
         # I created a new directory. So make a simple log buffer:
         to_log = []
-        
+
         to_log.append('Working in directory ' + self.workingdir)
         if self.work_in_subfolder:
             if path.exists(self.workingdir):
                 to_log.append('directory exists already: ' + self.workingdir)
-                # directory exists, make backup
-                if path.exists(self.workingdir + '_bak'):
-                    # previous backup exists already, remove old backup:
-                    rmtree(self.workingdir + '_bak')
-                    to_log.append(self.workingdir + '_bak removed')
-                rename(self.workingdir, self.workingdir + '_bak')
-                to_log.append('existing ' + self.workingdir + ' renamed to ' + 
-                        self.workingdir + '_bak')
-            # make new working directory:
-            mkdir(self.workingdir)
-            to_log.append('created directory ' + self.workingdir + '\n')
+                if self.clear_subfolder:
+                    # directory exists, make backup
+                    backupdir = self.workingdir + '_bak'
+                    if path.exists(backupdir):
+                        # previous backup exists already, remove old backup,
+                        # but keep .log and .out files (they have unique names):
+                        keepers = (glob1(self.workingdir + '_bak', '*.log') +
+                                glob1(self.workingdir + '_bak', '*.out'))
+                        to_log.append(
+                            ('removing existing backup {0}, but keeping {1}'
+                            ' old log and output files').format(
+                                backupdir, len(keepers)))
+                        for f in keepers:
+                            rename(path.join(backupdir, f),
+                                path.join(self.workingdir, f))
+                        rmtree(backupdir)
+                        to_log.append(backupdir + ' removed')
+                    # rename current (old) dir to backup:
+                    rename(self.workingdir, backupdir)
+                    to_log.append('existing ' + self.workingdir +
+                                  ' renamed to ' + backupdir)
+                    # make new empty working directory:
+                    mkdir(self.workingdir)
+                    to_log.append('created directory ' + self.workingdir + '\n')
+                else:
+                    to_log.append('working in existing directory.')
+            else:
+                # make new empty working directory:
+                mkdir(self.workingdir)
+                to_log.append('created directory ' + self.workingdir + '\n')
 
-        # Create the logger. Afterwards, we can also use log.info() etc. in
-        # other modules. All status and logging output will go through this
-        # logger (except MPB's output during simulation):
-        log.setup_logger('root.' + self.jobname, self.log_file, self.quiet)
-        
+        if logger:
+            if hasattr(logger, 'log') and callable(logger.log):
+                # a custom logger was given as parameter, use it:
+                log.logger = logger
+            else:
+                # Create the logger. Afterwards, we can also use log.info() etc.
+                # in other modules. All status, logging and stderr output will
+                # go through this logger (except MPB's output during
+                # simulation):
+                log.setup_logger(
+                    'root.' + self.jobname, self.log_file, self.quiet,
+                    redirect_stderr=True)
+
         # now we can log the stuff from before:
         if to_log:
             log.info('\n' + '\n'.join(to_log))
@@ -93,9 +150,9 @@ class Simulation(object):
 
         # get modes from runcode:
         self.modes = re.findall("\(run[-]?(.*?)[\s\)]", runcode, re.MULTILINE)
-        
+
         self.number_of_tiles_to_output = default_number_of_tiles_to_output
-        
+
         # In 3D, there are no pure tm or te modes. MPB renames them 
         # automatically to zodd and zeven, respectively. Do the same:
         if self.geometry.is3D:
@@ -108,9 +165,9 @@ class Simulation(object):
                     log.info('In 3D, there is no pure TM mode. '
                              'I will change it to zodd.')
                     self.modes[i] = 'zodd'
-                    
-        log.info("calculating modes: " + str(self.modes) + '\n')
-        
+
+        log.info("working with modes: " + str(self.modes) + '\n')
+
         new_environ_dict = {
             'GUILE_WARN_DEPRECATED': 'no',
             # load scheme files also from pyMPB directory (e.g. dos.scm): 
@@ -119,23 +176,22 @@ class Simulation(object):
         log.info('added to environment:' + 
                  ''.join(['\n  {0}={1}'.format(key, environ[key]) for key in 
                          new_environ_dict.keys()]))
-    
+
         log.info(
             'pyMPB Simulation created with following properties:' + 
             ''.join(['\npyMPBprop: {0}={1}'.format(key, val) for key, val in 
-                self.__dict__.items()]))
+                self.__dict__.items()]) + '\n\n')
         #TODO log all parameters of Simulation object in such a way that it can 
         # be recreated exactly.
         # Maybe even add relevant parts of data.py and defaults.py
 
-                
     def __str__(self):
         temp_dict = self.__dict__.copy()
         temp_dict['geometry'] = ''.join(str(a) for \
          a in self.geometry.objects)
         temp_dict['lattice'] = self.geometry.lattice
         return (template%temp_dict)
-    
+
     def write_ctl_file(self, where='./'):
         filename = path.join(where, self.ctl_file)
         log.info("writing ctl file to %s" % filename)
@@ -143,12 +199,12 @@ class Simulation(object):
             str(self) + '\n### end of ctl file ###\n\n')
         with open(filename,'w') as input_file:
             input_file.write(str(self))
-        
+
     def run_simulation(self, num_processors=2):
         self.write_ctl_file(self.workingdir)
-        
+
         mpb_call_str = mpb_call % dict(num_procs=num_processors)        
-        
+
         with open(self.out_file, 'w') as outputFile:
             log.info("Running the MPB-computation using the following call:\n" +
                 " ".join([mpb_call_str, self.ctl_file]))
@@ -168,6 +224,8 @@ class Simulation(object):
             outputFile.write("=========== MPB OUTPUT ===========\n")
             outputFile.write("==================================\n\n")
             outputFile.flush()
+            log.info('MPB simulation is running... To see progress, please '
+                'check the output file %s' % self.out_file)
             # run MPB, write output to outputFile:
             # TODO can we also pipe MPB output to stdout, so the user can
             # see progress?
@@ -181,12 +239,17 @@ class Simulation(object):
                              (str(endtime), str(endtime - starttime)))
             outputFile.write("returncode: " + str(retcode))
             log.info("Simulation finished, returncode: " + str(retcode))
-            
+
         return retcode
-    
+
     def epsilon_to_png(self):
         """Convert epsilon.h5 to epsilon.png. """
-    
+
+        if not path.isfile(self.eps_file):
+            log.info('epsilon file {0} does not exist, '
+                'will not create epsilon PNG.'.format(self.eps_file))
+            return
+
         # make rectangular cell etc:
         callstr = mpbdata_call % dict(
                     self.__dict__, 
@@ -210,26 +273,26 @@ class Simulation(object):
                                                  cwd=self.workingdir)
         else:
             return 1
-                
+
         return retcode
-        
+
     def fieldpatterns_to_png(self):
         """Convert all field patterns (saved during simulation in h5-files) to 
         png-files. Move them to subdirectories. Move the h5-files to the
         subdirectory 'patterns_h5~'. epsilon_to_png must be called before!
-        
+
         """
+        # make list of all field pattern h5 files:
+        filenames = glob1(self.workingdir, "*[edh].*.h5")
+        if not filenames:
+            return 0
+
         # prepare temporary folder:
         # (the h5 files will be moved here after conversion)
         if not path.isdir(path.join(self.workingdir, temporary_h5_folder)):
             log.info("creating subdirectory: " + temporary_h5_folder)
             mkdir(path.join(self.workingdir, temporary_h5_folder))
 
-        # make list of all field pattern h5 files:
-        filenames = glob1(self.workingdir, "*[edh].*.h5")
-        if not filenames:
-            return 0
-            
         log.info("will now convert following files to png: %s" % filenames)
         log.info("on all these files, mpb-data will be called like so:")
         log.info(mpbdata_call % dict(self.__dict__, output_file=temporary_h5,
@@ -253,10 +316,10 @@ class Simulation(object):
                             temporary_h5_folder)
         # for 'progress bar':
         #print('|' + "-" * len(filenames) + '|\n|', end='')
-        
+
         # i will later try to extract the mode from file name:
         findmode_re = re.compile(r'.*[.](.+?)[.]h5')
-        
+
         for fname in filenames:
             # use mode name as folder name: 
             # TODO: this does not work if run with (run) only!
@@ -269,7 +332,7 @@ class Simulation(object):
             if not path.isdir(path.join(self.workingdir, foldername_no_ovl)):
                 log.info("creating subdirectory: " + foldername_no_ovl)
                 mkdir(path.join(self.workingdir, foldername_no_ovl))
-        
+
             # make rectangular cell etc:
             callstr = mpbdata_call % dict(
                         self.__dict__, 
@@ -286,7 +349,7 @@ class Simulation(object):
                 # show some progress:
                 print('.', end='')
                 sys.stdout.flush()
-                for comp in ['.r', '.i']:            
+                for comp in ['.r', '.i']:
                     dct = dict(self.__dict__, 
                         h5_file=temporary_h5 + ':' + 
                             default_field_component_to_export + comp,
@@ -302,7 +365,7 @@ class Simulation(object):
                     else:
                         callstr = (fieldh5topng_call_2D % dct,
                                    fieldh5topng_call_2D_no_ovl % dct)
-                    
+
                     retcode = 0
                     for s in callstr:
                         if not retcode:
@@ -313,7 +376,7 @@ class Simulation(object):
                     return retcode
             else:
                 return 1
-                
+
             if not retcode:
                     # move h5 file to temporary folder:
                     rename(path.join(self.workingdir, fname), 
@@ -325,7 +388,27 @@ class Simulation(object):
     
     def post_process(self, convert_field_patterns=True):
         # make csv files for all band information:
-        output_file = open(self.out_file,'r')
+        try:
+            output_file = open(self.out_file,'r')
+        except IOError:
+            # Could not open output file. This is normal if the simulation was
+            # run earlier and now only the postprocessing needs to be done, in
+            # which case self.out_file has a different timestamp in the filename
+            # than the output file from the earlier simulation run, on which the
+            # postprocessing must be done.
+            # So just look for the latest .out file in the folder:
+            canditates = glob1(self.workingdir, self.jobname + '*.out')
+            if len(canditates) > 0:
+                # make newest first:
+                canditates.sort(reverse=True)
+                self.out_file = path.join(self.workingdir, canditates[0])
+                log.info('Post-processing output file from previous '
+                         'simulation run: {0}'.format(self.out_file))
+                output_file=open(self.out_file, 'r')
+            else:
+                log.exception('Cannot post-process, no simulation output '
+                              'file found!')
+                return
         pp_buffer = output_file.read()
         output_file.close()
         for mode in self.modes:
@@ -333,11 +416,11 @@ class Simulation(object):
             if mode:
                 pp_file_name = '{0}_{1}.csv'.format(self.jobname, mode)
                 pattern = r'^{0}freqs:, (.+)'.format(mode.lower())
-                log.info("postprocessing mode: {0}".format(mode))
+                log.info("post-processing mode: {0}".format(mode))
             else:
                 pp_file_name = '{0}.csv'.format(self.jobname)
                 pattern = r'^freqs:, (.+)'
-                log.info("postprocessing all modes")
+                log.info("post-processing all modes")
 
             #pattern = mode == 'tm' and r'tmfreqs:, (.+)' or r'tefreqs:, (.+)'
             log.info("writing band data to {0}".format(pp_file_name))
@@ -346,7 +429,7 @@ class Simulation(object):
             with open(
                     path.join(self.workingdir, pp_file_name), 'w') as pp_file:
                 pp_file.writelines(output_lines)
-                
+
             # export group velocities (if available):
             if mode:
                 pp_file_name = '{0}_velocity_{1}.csv'.format(
@@ -364,7 +447,7 @@ class Simulation(object):
                         path.join(
                             self.workingdir, pp_file_name), 'w') as pp_file:
                     pp_file.writelines(output_lines)                
-                
+
             # export density of states (if available):    
             if mode:
                 pp_file_name = '{0}_dos_{1}.csv'.format(self.jobname, mode)
@@ -380,7 +463,7 @@ class Simulation(object):
                         path.join(
                             self.workingdir, pp_file_name), 'w') as pp_file:
                     pp_file.writelines(output_lines)
-                    
+
         # it would have been nice, to extract the gaps from MPB output,
         # but now we have a gap extraction method in utility.py, which can 
         # also take the light_cone into consideration:
@@ -391,39 +474,42 @@ class Simulation(object):
         #              pp_buffer, re.MULTILINE)
         #for line in result:
         #    print line
-         
-        if not path.exists(self.eps_file) and path.exists(self.eps_file + '~'):
+
+        if not path.exists(self.eps_file) and path.isfile(self.eps_file + '~'):
             # The epsilon.h5 file was renamed before to mark it as temporary.
             # Name it back, otherwise h5topng can't handle the file:
             rename(self.eps_file + '~', self.eps_file)
             log.info("renamed {0} to {1}".format(
                         self.eps_file + '~', self.eps_file)) 
-         
+
         self.epsilon_to_png()
         if convert_field_patterns:
             self.fieldpatterns_to_png()
-        
+
         # delete temporary files:
         if path.isfile(path.join(self.workingdir, temporary_epsh5)):
-            remove(path.join(self.workingdir, temporary_epsh5))       
+            remove(path.join(self.workingdir, temporary_epsh5))
         if path.isfile(path.join(self.workingdir, temporary_h5)):
-            remove(path.join(self.workingdir, temporary_h5))        
-        # rename the epsilon.h5 file so my system knows it is a temporary file:        
-        if path.exists(self.eps_file + '~'):
+            remove(path.join(self.workingdir, temporary_h5))
+        # rename the epsilon.h5 file so my system knows it is a temporary file:
+        if path.isfile(self.eps_file + '~'):
             # but delete old temporary file first:
             remove(self.eps_file + '~')
-        rename(self.eps_file, self.eps_file + '~')
-        log.info("renamed {0} to {1}".format(
-                    self.eps_file, self.eps_file + '~'))
+        if path.isfile(self.eps_file):
+            rename(self.eps_file, self.eps_file + '~')
+            log.info("renamed {0} to {1}".format(
+                self.eps_file, self.eps_file + '~'))
         return
-        
+
     def display_epsilon(self):
+        if not path.isfile(path.join(self.workingdir, 'epsilon.png')):
+            return
         if self.geometry.is3D:
             sp.call(['display', 'epsilon.png', 'epsilonslab.png'], 
                     cwd=self.workingdir)
         else:
             sp.call(['display', 'epsilon.png'], cwd=self.workingdir)
-            
+
     def draw_bandstructure_2D(
             self, band, mode=None, filled=True, levels=15, lines=False, 
             labeled=False, legend=False):
@@ -448,7 +534,7 @@ class Simulation(object):
         those (indices into the list of found k-vecs, inclusive).
         Specify show to also show the figure (script will not block) or
         show='block' to show and block.
-        
+
         """
         for mode in self.modes:
             dstfile = path.join(self.workingdir, 
@@ -471,9 +557,9 @@ class Simulation(object):
         value where the plot will be cropped.
         The band data is loaded from previously saved .csv files, usually 
         done in post_process().
-        
-        TODO: add diagrams for each file in comparison_files
-        
+
+        TODO: add subplots for each file in comparison_files
+
         """
         jobname = path.join(self.workingdir, self.jobname)
         # draw data with matplotlib in one subplot:
@@ -482,22 +568,20 @@ class Simulation(object):
                                       light_cone=self.geometry.is3D)
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)                                      
-        
+
         filename = jobname + '_bands.pdf'
         log.info('saving band diagram to file %s' % filename)
         plotter.savefig(
-            filename, transparent=True, 
+            filename, transparent=True,
             bbox_inches='tight', pad_inches=0)
         filename = jobname + '_bands.png'
         log.info('saving band diagram to file %s' % filename)
         plotter.savefig(
-            filename, transparent=False, 
+            filename, transparent=False,
             bbox_inches='tight', pad_inches=0)
-        
+
         if show:
             plotter.show(block=block)
         else:
             # I don't want the old figures to show later
             del plotter
-        
-        
