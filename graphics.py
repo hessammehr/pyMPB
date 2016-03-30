@@ -161,13 +161,13 @@ def draw_bands(
             plotter.add_band_gap_rectangle_manual(
                 band[1], band[2],
                 light_line=data[:,4] if light_cone else None)   
-        
+
     if light_cone:
         plotter.add_light_cone()
-            
+
     plotter.set_plot_title(title)
-    plotter.add_legend()
-        
+    plotter.add_legend() 
+
     return plotter
     
 def draw_dos(jobname, modes, custom_plotter=None, title=''):

@@ -71,7 +71,7 @@ def main():
         with open("gaps.dat", "a") as f:
             f.write("{0}\t{1}\n".format(radius, gap))
     
-        log.info('\n ##### radius={0} - success! #####\n\n'.format(radius))
+        log.info(' ##### radius={0} - success! #####\n\n'.format(radius))
         
         # reset logger; the next stuff logged is going to next step's file:
         log.reset_logger()

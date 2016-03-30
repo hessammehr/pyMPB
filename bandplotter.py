@@ -94,7 +94,7 @@ class BandPlotter:
         same figure_name for multiple plots to reuse figures.
 
         """
-        self._fig = plt.figure(figure_name, figsize = figure_size)
+        self._fig = plt.figure(figure_name, figsize=figure_size)
         self._fig.clf()
         self._fig.canvas.mpl_connect('pick_event', self._onpick)
         self._numplots = 0
@@ -435,7 +435,12 @@ class BandPlotter:
         for i, ax in enumerate(self._axes):
             ax.change_geometry(rows, numcols, i + 1)
 
-        self._fig.tight_layout()
+        #self._fig.tight_layout() #FIXME this may be called only once,
+        # if called multiple times (as before here and in set_plot_title),
+        # python3 will crash (python process fills up computer memory)
+        # when rendering the figure. But only if fill_between is used for
+        # certain y values (here, add_light_cone makes problems in combination
+        # with multiple tight_layout). Very Strange!!!
 
     def next_plot(self):
         self._numplots += 1
@@ -466,12 +471,25 @@ class BandPlotter:
 
     def set_plot_title(self, title):
         self._ax.set_title(title, size='x-large')
-        self._fig.tight_layout()
+        #self._fig.tight_layout() #FIXME see comment in _distribute_subplots
+        # I used to call tight_layout here a second time, because the first call
+        # did not take the title into account, this second call also used the
+        # title when calculating best bounds.
+        # But crashes with Python 3.4.3; Matplotlib 1.5.1
 
     def savefig(self, *args, **kwargs):
+        # I cannot put tight_layout here, it will be called multiple times
+        # (e.g. for saving as png and pdf) and consequently crash on Python3.4:
+        #self._fig.tight_layout()
         return self._fig.savefig(*args, **kwargs)
+        # NOTE: this is saved without calling self._fig.tight_layout(). This
+        # could later be a problem if multiple subplots are added to the one
+        # figure. TODO need to check if I need tight_layout here.
 
     def show(self, block=True):
+        # set tight_layout after everything (title, labels, other subplots)
+        # have been added:
+        plt.tight_layout()
         plt.show(block=block)
 
 

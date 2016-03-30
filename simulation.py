@@ -567,7 +567,7 @@ class Simulation(object):
                                       crop_y=crop_y, 
                                       light_cone=self.geometry.is3D)
         # use returned plotter to add to figure:
-        #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)                                      
+        #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
 
         filename = jobname + '_bands.pdf'
         log.info('saving band diagram to file %s' % filename)
