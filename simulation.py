@@ -26,11 +26,12 @@ from datetime import datetime
 import time
 from glob import glob1
 from utility import distribute_pattern_images
+from kspace import KSpaceRectangular
 import log
 
 class Simulation(object): 
     def __init__(
-            self, jobname, geometry, kspace=default_kspace,
+            self, jobname, geometry, kspace=KSpaceRectangular(),
             resolution=default_resolution, mesh_size=default_mesh_size,
             numbands=default_numbands, initcode=default_initcode,
             runcode=default_runcode, postcode=default_postcode,

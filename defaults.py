@@ -13,12 +13,10 @@
     #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from kspace import KSpace
-
-default_kspace = KSpace(1)
 default_resolution = 32
 default_mesh_size = 3
 default_numbands = 2
+default_k_interpolation = 3
 default_initcode = (';load module for calculating local dos:\n'
                     '(define dosmodule (%search-load-path "dosv2.scm"))\n'
                     '(if dosmodule\n'

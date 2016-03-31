@@ -14,7 +14,7 @@
 
 from simulation import Simulation
 from geometry import Geometry
-from kspace import KSpace
+from kspace import KSpaceTriangular
 from objects import Dielectric, Rod, Block
 from defaults import default_initcode
 from defaults import default_band_func_te, default_band_func_tm
@@ -125,10 +125,7 @@ def TriHoles2D(
                 material='air',
                 radius=radius)])
 
-    kspace = KSpace(
-        dimensions=1, 
-        k_interpolation=k_interpolation, 
-        triangular=True)
+    kspace = KSpaceTriangular(k_interpolation=k_interpolation)
 
     # points of interest: (output mode patterns at these points)
     poi = kspace.points()[0:-1]
@@ -216,10 +213,7 @@ def TriHolesSlab3D(
                 material='air',
                 radius=radius)])
 
-    kspace = KSpace(
-        dimensions=1, 
-        k_interpolation=k_interpolation, 
-        triangular=True)
+    kspace = KSpaceTriangular(k_interpolation=k_interpolation)
 
     # points of interest: (output mode patterns at these points)
     poi = kspace.points()[0:-1]

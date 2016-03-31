@@ -99,21 +99,21 @@ def draw_rod(index, rod, anisotropic_component=0):
 def draw_bandstructure_2D(
         jobname, mode, kspace, band, ext='.csv', format='pdf', filled=True,
         levels=15, lines=False, labeled=False, legend=False):
-    """
-    Draw 2D band contour map of one band"""
+    """Draw 2D band contour map of one band."""
     #clf()
     fig = plt.figure(figsize=fig_size)
     ax = fig.add_subplot(111,aspect='equal')
     x,y,z = loadtxt(
         "{0}_{1}{2}".format(jobname, mode, ext),
-        delimiter=', ',skiprows=1,usecols=\
-    (1,2,4+band),unpack=True)
-    if kspace.dimensions == 1:
-        plt.plot(x,y,z)
-    elif kspace.dimensions ==2:
-        xi = np.linspace(-0.5,0.5,kspace.x_res)
-        yi = np.linspace(-0.5,0.5,kspace.y_res)
-        zi = griddata(x,y,z,xi,yi)
+        delimiter=', ',
+        skiprows=1,
+        usecols=(1, 2, 4 + band),
+        unpack=True)
+    if hasattr(kspace, 'x_steps') and hasattr(kspace, 'y_steps'):
+        # KSpace was created by KSpaceRectangularGrid
+        xi = np.linspace(-0.5, 0.5, kspace.x_steps)
+        yi = np.linspace(-0.5, 0.5, kspace.y_steps)
+        zi = griddata(x, y, z, xi, yi, interp='linear')
         if filled:
             cs = ax.contourf(xi,yi,zi,levels,**contour_filled)
             legend and plt.colorbar(cs,**colorbar_style)
@@ -125,6 +125,8 @@ def draw_bandstructure_2D(
             labeled and plt.clabel(cs,fontsize=8,inline=1)    
         ax.set_xlim(-0.5,0.5)
         ax.set_ylim(-0.5,0.5)
+    else:
+        plt.plot(x, y, z)
     plt.savefig(jobname,format=format,transparent=True)
     plt.show()
 
@@ -132,7 +134,8 @@ def draw_bands(
         jobname, modes, custom_plotter=None, title='', crop_y=True, 
         light_cone=False):
     """Draw all bands calculated along all k vecs in a band diagram.
-    Draw data with matplotlib in one subplot.
+
+    Draws dispersion relation with matplotlib in one subplot.
     If crop_y is true (default), the y-axis (frequency) will be limited 
     so that only frequency values are shown where all bands are known.
     Alternatively, a numeric value of crop_y denotes the upper frequency

@@ -17,7 +17,7 @@ sys.path.append('../')
 from objects import Rod,Dielectric
 from simulation import Simulation
 from geometry import Geometry
-from kspace import KSpace
+from kspace import KSpaceRectangularGrid
 from utility import wheel,occupancy_radius
 from graphics import draw_geometry
 from objects import Dielectric,Rod
@@ -41,7 +41,7 @@ def bs2d_test():
 	test_geom = wheel(1,1,5,0.3,0,Dielectric(11.8)\
 	,priority='Occupancy')
 	draw_geometry(test_geom,'test_2d')
-	test_kspace = KSpace(2,x_res=50,y_res=50)
+	test_kspace = KSpaceRectangularGrid(x_steps=50,y_steps=50)
 	sim = Simulation(
             'test_2d', test_geom, test_kspace, numbands=5, resolution=16)
 	sim.run_simulation()
