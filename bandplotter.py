@@ -73,14 +73,26 @@ class KvecFormatter(mpl.ticker.Formatter):
         return self.kvecdata[index]
 
 class BandPlotter:
-    _kz = 0.25
+    _kz = 0.5
+    # common critical points for triangular and rectangular lattices:
+    # The values will be written instead of the k-vecs in plots.
     _directions = {
         (0, 0, 0): r'$\Gamma$',
+        # Hexagonal lattice system:
+        # https://en.wikipedia.org/wiki/Brillouin_zone#Hexagonal_lattice_system_HEX.281.29
         (0, 0.5, 0): 'M',
         (-0.333333, 0.333333, 0): 'K',
-        (0, 0, _kz): r'$\Gamma$_z',
-        (0, 0.5, _kz): 'M_z',
-        (-0.333333, 0.333333, _kz): 'K_z'}
+        (0, 0, _kz): 'A',
+        (0, 0.5, _kz): 'L',
+        (-0.333333, 0.333333, _kz): 'H',
+        # Cubic lattice system:
+        # https://en.wikipedia.org/wiki/Brillouin_zone#Cubic_lattice_system_CUB.281.29.2C_BCC.281.29.2C_FCC.281.29
+        (0.5, 0, 0): 'X',
+        (0.5, 0.5, 0): 'M',
+        (0.5, 0.5, _kz): 'R',
+        #(0, 0, _kz) : 'Z' # this last one overrides 'A' :(
+    }
+    # TODO can I somehow tell the plotter if I use rectangular or triangular lattice?
 
     def __init__(
             self, fundlength=g_fundlength, figure_size=(12, 9), numrows=1,
@@ -223,7 +235,7 @@ class BandPlotter:
 
         if self._crop_y_val is not None:
             if self._maxy == -float('inf'):
-                # first call top plot_general in this subplot:
+                # first call of plot_general in this subplot:
                 self._maxy = self._crop_y_val
             else:
                 # not first call, maybe prev. maximum was less:
@@ -311,16 +323,33 @@ class BandPlotter:
         print()
 
     def add_light_cone(
-            self, color = 'gray', alpha=0.5):
+            self, color='gray', alpha=0.5):
         if self._last_kdata is None:
             raise ValueError(
                 'cannot add light cone: '
                 'k_data not given in last plot_general()')
-        fillto = max(self._last_kdata[:, 3].max() * 1.1, self._maxy)
-        self._ax.fill_between(
-            self._x_data, self._last_kdata[:, 3],
-            fillto,
-            color=color, alpha=alpha)
+        if alpha:
+            fillto = max(self._last_kdata[:, 3].max() * 1.1, self._maxy)
+            # As of Python version 3.4.3 and Matplotlib version 1.5.1, there is
+            # a bug in Axes.fill_between, which, in certain cases (especially
+            # when tight_layout is used or briefly just by moving the plot
+            # area around in the window), uses so much CPU power and memory
+            # during rendering, that the computer gets unresponsive. I found
+            # no such problems when using Python 2.7.6 with the same Matplotlib
+            # version. Therefore, I will use Axes.fill instead of fill_between,
+            # even though it seems overly complicated.
+            ## buggy:
+            ##self._ax.fill_between(
+            ##    self._x_data, self._last_kdata[:, 3],
+            ##    fillto,
+            ##    color=color, alpha=alpha)
+            fill_x_data = np.append(
+                self._x_data, [self._x_data[-1], self._x_data[0]])
+            fill_y_data = np.append(self._last_kdata[:, 3], [fillto, fillto])
+            self._ax.fill(
+                fill_x_data, fill_y_data,
+                color=color, alpha=alpha)
+
         self._ax.plot(self._x_data, self._last_kdata[:, 3], color=color)
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_ylim(self._miny, self._maxy)
@@ -416,6 +445,10 @@ class BandPlotter:
 
     def fill_between_bands(
             self, bandfrom, bandto, color = '#7f7fff', alpha=0.5):
+        """ FIXME: see add_light_cone comments: fill_between is unstable, needs
+        to be changed to use Axes.fill! In the mean time, don't use this
+        function with Python3! Python 2.7 works fine.
+        """
         self._ax.fill_between(
             self._x_data, self._last_data[:, bandfrom - 1],
             self._last_data[:, bandto - 1],
@@ -434,13 +467,6 @@ class BandPlotter:
 
         for i, ax in enumerate(self._axes):
             ax.change_geometry(rows, numcols, i + 1)
-
-        #self._fig.tight_layout() #FIXME this may be called only once,
-        # if called multiple times (as before here and in set_plot_title),
-        # python3 will crash (python process fills up computer memory)
-        # when rendering the figure. But only if fill_between is used for
-        # certain y values (here, add_light_cone makes problems in combination
-        # with multiple tight_layout). Very Strange!!!
 
     def next_plot(self):
         self._numplots += 1
@@ -471,25 +497,18 @@ class BandPlotter:
 
     def set_plot_title(self, title):
         self._ax.set_title(title, size='x-large')
-        #self._fig.tight_layout() #FIXME see comment in _distribute_subplots
-        # I used to call tight_layout here a second time, because the first call
-        # did not take the title into account, this second call also used the
-        # title when calculating best bounds.
-        # But crashes with Python 3.4.3; Matplotlib 1.5.1
 
     def savefig(self, *args, **kwargs):
-        # I cannot put tight_layout here, it will be called multiple times
-        # (e.g. for saving as png and pdf) and consequently crash on Python3.4:
-        #self._fig.tight_layout()
-        return self._fig.savefig(*args, **kwargs)
-        # NOTE: this is saved without calling self._fig.tight_layout(). This
-        # could later be a problem if multiple subplots are added to the one
-        # figure. TODO need to check if I need tight_layout here.
-
-    def show(self, block=True):
         # set tight_layout after everything (title, labels, other subplots)
         # have been added:
-        plt.tight_layout()
+        self._fig.tight_layout()
+        return self._fig.savefig(*args, **kwargs)
+
+    def show(self, block=True, tight=True):
+        # set tight_layout after everything (title, labels, other subplots)
+        # have been added:
+        if tight:
+            plt.tight_layout()
         plt.show(block=block)
 
 
