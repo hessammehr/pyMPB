@@ -12,6 +12,8 @@
     #You should have received a copy of the GNU General Public License
     #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+speed_of_light = 299792458 # m/s
+
 # for 1500nm: ? - (from first submitted data.py)
 #dielectrics = {'si':11.8,'diamond':5.7,'pe':2.26,\
 #'sio2':4.5,'paper':3.5,'teflon':2.1,'pvc':4.5}

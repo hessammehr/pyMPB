@@ -26,6 +26,10 @@ from utility import get_gap_bands
 import log
 
 def main():
+    if len(sys.argv) > 1:
+        mode=sys.argv[1]
+    else:
+        mode='sim'
     minrad = 0.2
     maxrad = 0.4
     radstep = 0.05
@@ -47,7 +51,7 @@ def main():
             resolution=16,#32,
             mesh_size=3,#7,
             supercell_z=6,
-            runmode='sim',
+            runmode=mode,
             num_processors=2,
             convert_field_patterns=True)
         

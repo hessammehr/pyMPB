@@ -27,22 +27,65 @@ class TestKSpaces(unittest.TestCase):
     def test_KSpaceTriangular_string_representation(self):
         k_interpolation = 8
         target = '\n'.join(['(interpolate %i (list',
-                            '    (vector3 0 0 0)',
-                            '    (vector3 0 0.5 0)',
-                            '    (vector3 (/ -3) (/ 3) 0)',
-                            '    (vector3 0 0 0)))']) % k_interpolation
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '    (vector3 0 0.5 0)  ;M',
+                            '    (vector3 (/ -3) (/ 3) 0)  ;K',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '))']) % k_interpolation
         test_kspace = KSpaceTriangular(k_interpolation=k_interpolation)
         self.assertEqual(str(test_kspace), target)
 
     def test_KSpaceTriangular_string_representation_no_interpolation(self):
         k_interpolation = 0
         target = '\n'.join(['(list',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '    (vector3 0 0.5 0)  ;M',
+                            '    (vector3 (/ -3) (/ 3) 0)  ;K',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            ')'])
+        test_kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        self.assertEqual(str(test_kspace), target)
+
+    def test_KSpaceTriangular_string_representation_no_labels(self):
+        k_interpolation = 8
+        target = '\n'.join(['(interpolate %i (list',
                             '    (vector3 0 0 0)',
                             '    (vector3 0 0.5 0)',
                             '    (vector3 (/ -3) (/ 3) 0)',
-                            '    (vector3 0 0 0))'])
+                            '    (vector3 0 0 0)',
+                            '))']) % k_interpolation
         test_kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        # remove labels:
+        test_kspace.point_labels=[]
         self.assertEqual(str(test_kspace), target)
+
+    def test_KSpaceTriangular_string_representation_no_labels_no_interpolation(self):
+        k_interpolation = 0
+        target = '\n'.join(['(list',
+                            '    (vector3 0 0 0)',
+                            '    (vector3 0 0.5 0)',
+                            '    (vector3 (/ -3) (/ 3) 0)',
+                            '    (vector3 0 0 0)',
+                            ')'])
+        test_kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        # remove labels:
+        test_kspace.point_labels=[]
+        self.assertEqual(str(test_kspace), target)
+
+    def test_KSpaceTriangular_get_label_dict(self):
+        test_kspace = KSpaceTriangular()
+        self.assertTrue(test_kspace.has_labels())
+        self.assertEqual(
+            test_kspace.labels(),
+            ['Gamma', 'M', 'K', 'Gamma'],
+        )
+
+    def test_KSpaceTriangular_get_label_dict_no_labels(self):
+        test_kspace = KSpaceTriangular()
+        # remove labels:
+        test_kspace.point_labels=[]
+        self.assertFalse(test_kspace.has_labels())
+        self.assertEqual(test_kspace.labels(), [])
 
     def test_KSpaceTriangular_count_interpolated(self):
         k_interpolation = 10
@@ -53,22 +96,39 @@ class TestKSpaces(unittest.TestCase):
     def test_KSpaceRectangular_string_representation(self):
         k_interpolation = 15
         target = '\n'.join(['(interpolate %i (list',
-                            '    (vector3 0 0 0)',
-                            '    (vector3 0.5 0 0)',
-                            '    (vector3 0.5 0.5 0)',
-                            '    (vector3 0 0 0)))']) % k_interpolation
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '    (vector3 0.5 0 0)  ;X',
+                            '    (vector3 0.5 0.5 0)  ;M',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '))']) % k_interpolation
         test_kspace = KSpaceRectangular(k_interpolation=k_interpolation)
         self.assertEqual(str(test_kspace), target)
 
     def test_KSpaceRectangular_string_representation_no_interpolation(self):
         k_interpolation = 0
         target = '\n'.join(['(list',
-                            '    (vector3 0 0 0)',
-                            '    (vector3 0.5 0 0)',
-                            '    (vector3 0.5 0.5 0)',
-                            '    (vector3 0 0 0))'])
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '    (vector3 0.5 0 0)  ;X',
+                            '    (vector3 0.5 0.5 0)  ;M',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            ')'])
         test_kspace = KSpaceRectangular(k_interpolation=k_interpolation)
         self.assertEqual(str(test_kspace), target)
+
+    def test_KSpaceRectangular_get_label_dict(self):
+        test_kspace = KSpaceRectangular()
+        self.assertTrue(test_kspace.has_labels())
+        self.assertEqual(
+            test_kspace.labels(),
+            ['Gamma', 'X', 'M', 'Gamma'],
+        )
+
+    def test_KSpaceRectangular_get_label_dict_no_labels(self):
+        test_kspace = KSpaceRectangular()
+        # remove labels:
+        test_kspace.point_labels=[]
+        self.assertFalse(test_kspace.has_labels())
+        self.assertEqual(test_kspace.labels(), [])
 
     def test_KSpaceRectangular_count_interpolated(self):
         k_interpolation = 16
@@ -85,6 +145,7 @@ class TestKSpaces(unittest.TestCase):
                 testpoints.append((x, y, 0.0))
         test_kspace = KSpaceRectangularGrid(x_steps=x_steps, y_steps=y_steps)
         self.assertEqual(test_kspace.points(), testpoints)
+        self.assertFalse(test_kspace.has_labels())
 
     def test_KSpaceRectangularGrid_count_interpolated(self):
         """Test that there is not interpolation with KSpaceRectangularGrid."""
@@ -110,6 +171,7 @@ class TestKSpaces(unittest.TestCase):
             (1, 2, 3), (1, 2, 3), (0, 1, 2)]
         test_kspace = KSpace(points_list=input_points)
         self.assertEqual(test_kspace.points(), corrected_points)
+        self.assertFalse(test_kspace.has_labels())
 
 if __name__ == '__main__':
     unittest.main()

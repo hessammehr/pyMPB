@@ -20,7 +20,7 @@ import subprocess as sp
 #from tempfile import NamedTemporaryFile as ntempfile
 from re import findall
 import re
-from defaults import *
+import defaults
 import graphics
 from datetime import datetime
 import time
@@ -32,11 +32,14 @@ import log
 class Simulation(object): 
     def __init__(
             self, jobname, geometry, kspace=KSpaceRectangular(),
-            resolution=default_resolution, mesh_size=default_mesh_size,
-            numbands=default_numbands, initcode=default_initcode,
-            runcode=default_runcode, postcode=default_postcode,
+            resolution=defaults.default_resolution,
+            mesh_size=defaults.default_mesh_size,
+            numbands=defaults.default_numbands,
+            initcode=defaults.default_initcode,
+            runcode=defaults.default_runcode,
+            postcode=defaults.default_postcode,
             work_in_subfolder=True, clear_subfolder=True,
-            logger=True, quiet=isQuiet):
+            logger=True, quiet=defaults.isQuiet):
         """Create a simulation object with all parameters describing the
         simulation, including a unique jobname (all generated filenames will
         include this name), the geometry (pyMPB Geometry object), the kspace
@@ -152,7 +155,8 @@ class Simulation(object):
         # get modes from runcode:
         self.modes = re.findall("\(run[-]?(.*?)[\s\)]", runcode, re.MULTILINE)
 
-        self.number_of_tiles_to_output = default_number_of_tiles_to_output
+        self.number_of_tiles_to_output = \
+            defaults.default_number_of_tiles_to_output
 
         # In 3D, there are no pure tm or te modes. MPB renames them 
         # automatically to zodd and zeven, respectively. Do the same:
@@ -191,7 +195,7 @@ class Simulation(object):
         temp_dict['geometry'] = ''.join(str(a) for \
          a in self.geometry.objects)
         temp_dict['lattice'] = self.geometry.lattice
-        return (template%temp_dict)
+        return (defaults.template%temp_dict)
 
     def write_ctl_file(self, where='./'):
         filename = path.join(where, self.ctl_file)
@@ -204,7 +208,7 @@ class Simulation(object):
     def run_simulation(self, num_processors=2):
         self.write_ctl_file(self.workingdir)
 
-        mpb_call_str = mpb_call % dict(num_procs=num_processors)        
+        mpb_call_str = defaults.mpb_call % dict(num_procs=num_processors)
 
         with open(self.out_file, 'w') as outputFile:
             log.info("Running the MPB-computation using the following call:\n" +
@@ -252,20 +256,20 @@ class Simulation(object):
             return
 
         # make rectangular cell etc:
-        callstr = mpbdata_call % dict(
+        callstr = defaults.mpbdata_call % dict(
                     self.__dict__, 
                     h5_file=self.eps_file + ':data', 
-                    output_file=temporary_epsh5)
+                    output_file=defaults.temporary_epsh5)
         log.info("calling: {0}".format(callstr))
         if not sp.call(callstr.split(), cwd=self.workingdir):
             # no error, continue:
-            dct = dict(self.__dict__, h5_file=temporary_epsh5)
+            dct = dict(self.__dict__, h5_file=defaults.temporary_epsh5)
             # save dielectric to png:
             if self.geometry.is3D:
-                callstr = (epsh5topng_call_3D % dct,
-                           epsh5topng_call_3D_cross_sect % dct)
+                callstr = (defaults.epsh5topng_call_3D % dct,
+                           defaults.epsh5topng_call_3D_cross_sect % dct)
             else:
-                callstr = (epsh5topng_call_2D % dct,)
+                callstr = (defaults.epsh5topng_call_2D % dct,)
             retcode = 0
             for s in callstr:
                 if not retcode:
@@ -290,31 +294,35 @@ class Simulation(object):
 
         # prepare temporary folder:
         # (the h5 files will be moved here after conversion)
-        if not path.isdir(path.join(self.workingdir, temporary_h5_folder)):
-            log.info("creating subdirectory: " + temporary_h5_folder)
-            mkdir(path.join(self.workingdir, temporary_h5_folder))
+        if not path.isdir(
+            path.join(self.workingdir, defaults.temporary_h5_folder)):
+                log.info(
+                    "creating subdirectory: " + defaults.temporary_h5_folder)
+                mkdir(path.join(self.workingdir, defaults.temporary_h5_folder))
 
         log.info("will now convert following files to png: %s" % filenames)
         log.info("on all these files, mpb-data will be called like so:")
-        log.info(mpbdata_call % dict(self.__dict__, output_file=temporary_h5,
-                                     h5_file='<file.h5>'))
+        log.info(defaults.mpbdata_call % dict(
+            self.__dict__,
+            output_file=defaults.temporary_h5,
+            h5_file='<file.h5>'))
         log.info("and then 4 times h5topng:")
         for comp in ['.r', '.i']:            
             dct = dict(self.__dict__, 
-               h5_file=temporary_h5 + ':' + 
-                   default_field_component_to_export + comp,
-               eps_file=temporary_epsh5,
+               h5_file=defaults.temporary_h5 + ':' +
+                   defaults.default_field_component_to_export + comp,
+               eps_file=defaults.temporary_epsh5,
                output_file='<mode>/<filename>' + comp + '.png',
                output_file_no_ovl='<mode>_no_ovl/<filename>' + 
                    comp + '.png')
             if self.geometry.is3D:
-                log.info(fieldh5topng_call_3D % dct)
-                log.info(fieldh5topng_call_3D_no_ovl % dct)
+                log.info(defaults.fieldh5topng_call_3D % dct)
+                log.info(defaults.fieldh5topng_call_3D_no_ovl % dct)
             else:
-                log.info(fieldh5topng_call_2D % dct)
-                log.info(fieldh5topng_call_2D_no_ovl % dct)
+                log.info(defaults.fieldh5topng_call_2D % dct)
+                log.info(defaults.fieldh5topng_call_2D_no_ovl % dct)
         log.info("and finally move the h5 file to temporary folder " + 
-                            temporary_h5_folder)
+                            defaults.temporary_h5_folder)
         # for 'progress bar':
         #print('|' + "-" * len(filenames) + '|\n|', end='')
 
@@ -335,10 +343,10 @@ class Simulation(object):
                 mkdir(path.join(self.workingdir, foldername_no_ovl))
 
             # make rectangular cell etc:
-            callstr = mpbdata_call % dict(
+            callstr = defaults.mpbdata_call % dict(
                         self.__dict__, 
                         h5_file=fname, 
-                        output_file=temporary_h5)
+                        output_file=defaults.temporary_h5)
             # note: never include :dataset here (or as -d),
             # because then mpb-data will only see the real
             # or imaginary part, not both, and will not 
@@ -352,20 +360,20 @@ class Simulation(object):
                 sys.stdout.flush()
                 for comp in ['.r', '.i']:
                     dct = dict(self.__dict__, 
-                        h5_file=temporary_h5 + ':' + 
-                            default_field_component_to_export + comp,
-                        eps_file=temporary_epsh5,
+                        h5_file=defaults.temporary_h5 + ':' +
+                            defaults.default_field_component_to_export + comp,
+                        eps_file=defaults.temporary_epsh5,
                         output_file=foldername + 
                             fname.rstrip('.h5') + comp + '.png',
                         output_file_no_ovl=foldername_no_ovl + 
                             fname.rstrip('.h5') + comp + '.png')
                     # save mode pattern to png:
                     if self.geometry.is3D:
-                        callstr = (fieldh5topng_call_3D % dct,
-                                   fieldh5topng_call_3D_no_ovl % dct)
+                        callstr = (defaults.fieldh5topng_call_3D % dct,
+                                   defaults.fieldh5topng_call_3D_no_ovl % dct)
                     else:
-                        callstr = (fieldh5topng_call_2D % dct,
-                                   fieldh5topng_call_2D_no_ovl % dct)
+                        callstr = (defaults.fieldh5topng_call_2D % dct,
+                                   defaults.fieldh5topng_call_2D_no_ovl % dct)
 
                     retcode = 0
                     for s in callstr:
@@ -382,7 +390,7 @@ class Simulation(object):
                     # move h5 file to temporary folder:
                     rename(path.join(self.workingdir, fname), 
                            path.join(
-                               self.workingdir, temporary_h5_folder, fname))
+                               self.workingdir, defaults.temporary_h5_folder, fname))
         # finalize 'progress bar':
         #print('|')      
         return retcode
@@ -488,10 +496,10 @@ class Simulation(object):
             self.fieldpatterns_to_png()
 
         # delete temporary files:
-        if path.isfile(path.join(self.workingdir, temporary_epsh5)):
-            remove(path.join(self.workingdir, temporary_epsh5))
-        if path.isfile(path.join(self.workingdir, temporary_h5)):
-            remove(path.join(self.workingdir, temporary_h5))
+        if path.isfile(path.join(self.workingdir, defaults.temporary_epsh5)):
+            remove(path.join(self.workingdir, defaults.temporary_epsh5))
+        if path.isfile(path.join(self.workingdir, defaults.temporary_h5)):
+            remove(path.join(self.workingdir, defaults.temporary_h5))
         # rename the epsilon.h5 file so my system knows it is a temporary file:
         if path.isfile(self.eps_file + '~'):
             # but delete old temporary file first:
@@ -506,10 +514,11 @@ class Simulation(object):
         if not path.isfile(path.join(self.workingdir, 'epsilon.png')):
             return
         if self.geometry.is3D:
-            sp.call(['display', 'epsilon.png', 'epsilonslab.png'], 
-                    cwd=self.workingdir)
+            files = ['epsilon.png', 'epsilonslab.png']
         else:
-            sp.call(['display', 'epsilon.png'], cwd=self.workingdir)
+            files = ['epsilon.png']
+        call = defaults.display_png_call % {'files': ' '.join(files)}
+        sp.call(call.split(), cwd=self.workingdir)
 
     def draw_bandstructure_2D(
             self, band, mode=None, filled=True, levels=15, lines=False, 
@@ -549,37 +558,72 @@ class Simulation(object):
                 show=show)
 
     def draw_bands(
-            self, title='', comparison_files=[], show=False, block=True,
-            crop_y=True):
-        """Draw all bands calculated along all k vecs in a band diagram.
-        If crop_y is true (default), the y-axis (frequency) will be limited 
+            self, title='', crop_y=True,
+            x_axis_hint=defaults.default_x_axis_hint,
+            show=False, block=True, save=True):
+        """Plot dispersion relation of all bands calculated along all k vectors.
+
+        *x_axis_formatter* is an object with the method
+        'apply_to_axis(axis, **kwargs)' which sets the x-axis' tickpositions,
+        major ticklabels and label.
+        *title* is the subplot's title.
+        If *crop_y* is true (default), the y-axis (frequency) will be limited
         so that only frequency values are shown where all bands are known.
-        Alternatively, a numeric value of crop_y denotes the upper frequency
+        Alternatively, a numeric value of *crop_y* denotes the upper frequency
         value where the plot will be cropped.
+
+        *x_axis_hint* gives a hint on which kind of ticks and labels should be
+        shown on the x-axis and provides the data needed.
+        *x_axis_hint* can be one of the following:
+        -- integer number: The axis' labels will be the 3D k-vectors. The
+               number denotes the number of major ticks and labels distributed
+               on the axis.
+        -- [integer, format-string]: Same as above, but the labels are
+               formatted with the format-string - this gives the possibility
+               to only show one of the three vector components, e.g. the
+               string "{2}" to only show the k-vector's z-component. The axis
+               title will be inferred from the format-string.
+        -- KSpace object: This must be a KSpace object created with
+               point_labels. These labels usually denote the high symmetry or
+               crititical points, and they will be shown on the axis.
+        -- CustomAxisFormatter object: This gives the possibility to completely
+               customize the x-axis' tick positions, tick labels and axis
+               label. If the CustomAxisFormatter's hover data have not been
+               set, it will be set here with the k-vectors read from the
+               .csv file.
+
+        If *show*, the plot is shown in a window. In this case, set *block*
+        to True if the script should wait, otherwise the script might end
+        and close the figure. Set *block* to False if you want to display
+        other figures.
+        If *save* the figure is saved to 'png' and 'pdf' files.
+
         The band data is loaded from previously saved .csv files, usually 
         done in post_process().
 
-        TODO: add subplots for each file in comparison_files
+        TODO: add subplots for each file in argument 'comparison_files=[]'
 
         """
         jobname = path.join(self.workingdir, self.jobname)
         # draw data with matplotlib in one subplot:
-        plotter = graphics.draw_bands(jobname, self.modes, title=title, 
+        plotter = graphics.draw_bands(jobname, self.modes,
+                                      x_axis_hint=x_axis_hint,
+                                      title=title,
                                       crop_y=crop_y, 
                                       light_cone=self.geometry.is3D)
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
-
-        filename = jobname + '_bands.pdf'
-        log.info('saving band diagram to file %s' % filename)
-        plotter.savefig(
-            filename, transparent=True,
-            bbox_inches='tight', pad_inches=0)
-        filename = jobname + '_bands.png'
-        log.info('saving band diagram to file %s' % filename)
-        plotter.savefig(
-            filename, transparent=False,
-            bbox_inches='tight', pad_inches=0)
+        if save:
+            filename = jobname + '_bands.pdf'
+            log.info('saving band diagram to file %s' % filename)
+            plotter.savefig(
+                filename, transparent=True,
+                bbox_inches='tight', pad_inches=0)
+            filename = jobname + '_bands.png'
+            log.info('saving band diagram to file %s' % filename)
+            plotter.savefig(
+                filename, transparent=False,
+                bbox_inches='tight', pad_inches=0)
 
         if show:
             plotter.show(block=block)

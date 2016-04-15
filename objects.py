@@ -56,7 +56,7 @@ class Dielectric(object):
     def __init__(self,dielectric):
         if hasattr(dielectric,'__int__'):
             self.epsilon = dielectric
-            self.name = 'eps={0:.3f}'.format(dielectric) 
+            self.name = 'eps{0:.3f}'.format(dielectric)
         else:
             self.epsilon = dielectrics[dielectric]
             self.name = material_names[dielectric]

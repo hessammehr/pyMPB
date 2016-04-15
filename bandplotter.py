@@ -20,316 +20,259 @@ if mpl.__version__ >= '1.4':
     from matplotlib.axes._base import _process_plot_format
 else:
     from matplotlib.axes import _process_plot_format
-#from matplotlib.widgets import Slider, RadioButtons
 import numpy as np
-from fractions import Fraction
 from itertools import cycle
 from utility import get_intersection_knum
+from axis_formatter import CustomAxisFormatter
 import log
+import defaults
 
-"""last edit 2016-01-24:
-- added add_band_gap_rectangle
-- BandPlotter can be created without knowing the number of plots beforehand
-- added automatic color cycle, so multiple calls to plot_bands lead to
-  multiple colors, one color for each call to plot_bands
-- add_band_gap_rectangle uses last plotted color if no color is given
-- possibility to automatically crop y before hightest band
-- added reuse_prev_fig (default: True) to constructor parameters.
-- moved crop_y from __init__ to plot_bands
-- possiblity to specify an upper y-value where to crop manually
-- added add_band_gap_manual and stop_at_light_line parameter
-- removed self._extra_y_padding, too chaotic
-"""
-
-g_fundlength = 270 # fundamental lengthscale (i.e. a) in nm
-g_speed_of_light = 299792458 # m/s
-
-class KvecFormatter(mpl.ticker.Formatter):
-    """A formatter for the x-axis' ticklabels. Must be initialized with a list
-    of ticklabels (usually high-symmetry points like Gamma, K etc.) and the
-    k vector data of all k-points. During mouseover, this data will be shown
-    in status bar of plot.
-
-    """
-    def __init__(self, labels, kvecdata):
-        """
-        *labels* is a sequence of strings.
-        *kvecdata* is a n x 3 array, where n is the number of k-points
-
-        """
-        self.labels = labels
-        self.kvecdata = kvecdata
-
-    def __call__(self, x, pos=None):
-        'Return the format for tick val *x* at position *pos*'
-        # pos is not None for the ticks labels,
-        # pos is None for coords output during mouseover
-        if pos is None or pos >= len(self.labels):
-            return self._get_kvec_from_index(int(x + 0.5))
-        else:
-            return self.labels[pos]
-
-    def _get_kvec_from_index(self, index):
-        return self.kvecdata[index]
 
 class BandPlotter:
-    _kz = 0.5
-    # common critical points for triangular and rectangular lattices:
-    # The values will be written instead of the k-vecs in plots.
-    _directions = {
-        (0, 0, 0): r'$\Gamma$',
-        # Hexagonal lattice system:
-        # https://en.wikipedia.org/wiki/Brillouin_zone#Hexagonal_lattice_system_HEX.281.29
-        (0, 0.5, 0): 'M',
-        (-0.333333, 0.333333, 0): 'K',
-        (0, 0, _kz): 'A',
-        (0, 0.5, _kz): 'L',
-        (-0.333333, 0.333333, _kz): 'H',
-        # Cubic lattice system:
-        # https://en.wikipedia.org/wiki/Brillouin_zone#Cubic_lattice_system_CUB.281.29.2C_BCC.281.29.2C_FCC.281.29
-        (0.5, 0, 0): 'X',
-        (0.5, 0.5, 0): 'M',
-        (0.5, 0.5, _kz): 'R',
-        #(0, 0, _kz) : 'Z' # this last one overrides 'A' :(
-    }
-    # TODO can I somehow tell the plotter if I use rectangular or triangular lattice?
-
     def __init__(
-            self, fundlength=g_fundlength, figure_size=(12, 9), numrows=1,
-            figure_name='bands'):
+            self, figure_size=defaults.fig_size,
+            numrows=1, figure_name='bands', onclick=defaults.default_onclick):
         """ Prepare a new figure for plotting photonic bands.
-        fundlength is the real length of th fundamental length unit a in the
-        MPB simulation, usually the lattice constant;
-        figure_size is the figure size in inches (x,y-tuple);
-        numrows is the number of subplot rows in the figure.
-        Provide a unique figure_name to create a new figure, or reuse the
-        same figure_name for multiple plots to reuse figures.
+
+        *figure_size* is the figure size in inches (x,y-tuple);
+        *numrows* is the number of subplot rows in the figure.
+        Provide a unique *figure_name* to create a new figure, or reuse the
+        same *figure_name* for multiple plots to reuse figures.
+
+        If *onclick* is a callable function with two positional arguments, and
+        plot_bands is later called with a picker supplied, the function is
+        called if the user clicks on a vertex in the plot. The two positional
+        arguments supplied to the function are:
+        1. the <matplotlib.backend_bases.PickEvent> object
+        (with interesting fields:
+        artist - the Line2D object which is the actual graph in the diagram
+        containing the xy-data;
+        ind - a list of the data indices of the Line2D data clicked on;
+        mouseevent - among others with mouseevent.inaxes: the Axes objects
+        receiving the click event)
+        and 2. this Bandplotter instance, so the function can use the data and
+        manipulate / add to the plot.
+        By default, the function defaults.default_onclick is called, which
+        just prints the vertex' data to stdout.
 
         """
         self._fig = plt.figure(figure_name, figsize=figure_size)
         self._fig.clf()
         self._fig.canvas.mpl_connect('pick_event', self._onpick)
+        if callable(onclick):
+            self._onclick = onclick
+        else:
+            self._onclick = None
         self._numplots = 0
         self._numrows = max(numrows, 1)
         self._axes = []
-        # fundamental lengthscale (i.e. a) in nm (only used in _onpick):
-        self._fundlength = fundlength
-        self._crop_y = False
-        self._crop_y_val = None
         self.next_plot()
 
+    def _onpick(self, event):
+        """This is called if the bands are plotted with a picker supplied and
+        the user clicks on a point in the plot. It then calls the onclick
+        method supplied to Bandplotter on creation.
+
+        """
+        if self._onclick is not None:
+            self._onclick(event, self)
+
+    def next_plot(self):
+        """Create a new subplot.
+
+        Following calls to plot_bands and the add-methods will plot to this
+        new subplot.
+
+        """
+        self._numplots += 1
+        # add subplot somewhere where no other is yet. Final position
+        # will be set in _distribute_subplots
+        self._ax = self._fig.add_subplot(1, self._numplots, self._numplots)
+        self._ax.set_ylabel(defaults.default_y_axis_label, size='x-large')
+        self._ax.grid(True)
+        self._axes.append(self._ax)
+
+        self._miny = float('inf')
+        self._maxy = -float('inf')
+        self._crop_y_val = None
+        # Note on the difference between self._maxy and self._crop_y_val:
+        # self._maxy is always the maximum shown y-value. self._crop_y_val is
+        # only the maximum (and then the same than self._maxy) if plot_bands
+        # was called with a crop_y argument set to a y-value or to True,
+        # otherwise self._crop_y_val will still be None. If another graph is
+        # added with plot_bands while self._crop_y_val is set, the minimum of
+        # the new graph's crop_y value and the old value will be used as new
+        # maximum. If self._crop_y_val is still None, the y-axis will be scaled
+        # to show the maximum of all graphs.
+
+        # start new plot at blue again:
+        self._colors = cycle('bgrcmky')
+        self._last_color = 'b'
+        self._distribute_subplots()
+
     def set_num_rows(self, numrows):
+        """Change the number of subplot rows.
+
+        Multiple subplots will be distributed so they occupy numrows rows.
+        """
         self._numrows = max(numrows, 1)
         self._distribute_subplots()
 
-    def _get_direction_string(self, vec3):
-        t = tuple(vec3)
-        if t in self._directions:
-            return self._directions[t]
+    def _distribute_subplots(self):
+        """Redistribute subplots so they occupy the set number of rows."""
+        rows = max(self._numrows, 1)
+        if self._numrows == 0:
+            numcols = 1
+            rows = self._numplots
         else:
-            return ''
+            numcols = int(np.ceil(self._numplots / rows))
+            rows = min(rows, self._numplots)
 
-    def _set_x_ticks_labels(self, banddata, num_labels=-1):
-        """ if num_labels==-1, plot high symmetry points (gamma etc.)"""
-        labels = []
-        ticks = []
-        num_minors = len(banddata)
-        if num_labels == -1:
-            for i, kdata in enumerate(banddata):
-                dstr = self._get_direction_string(kdata[0:3])
-                if dstr:
-                    labels.append(dstr)
-                    ticks.append(i)
-        elif num_labels > 0:
-
-            num = len(banddata) - 1
-            step = np.floor(num / (num_labels-1))
-            ticks = np.arange(0, num+1, step)
-            for i in ticks:
-                f = Fraction(banddata[i][0]).limit_denominator(100000)
-                if f.denominator > 1000:
-                    kxstr = '{0:.10f}'.format(banddata[i][0])
-                else:
-                    kxstr = str(f)
-                f = Fraction(banddata[i][1]).limit_denominator(100000)
-                if f.denominator > 1000:
-                    kystr = '{0:.10f}'.format(banddata[i][0])
-                else:
-                    kystr = str(f)
-                labels.append(r'$\binom{%s}{%s}$' % (kxstr, kystr))
-                #labels.append(r'$\left(\stackrel[3]{{{1}}}{{ \stackrel{{{1}}}{{{0}}} }}\right)$'.format(i, i+1))
-                #labels.append('{1}\n{1}\n{0}'.format(i, i+1))
-        xaxis = self._ax.get_xaxis()
-        xaxis.set_label_text(r'Wave vector', size='x-large')
-        xaxis.set_minor_locator(
-            mpl.ticker.LinearLocator(num_minors))
-        xaxis.set_ticks(ticks)
-        xaxis.set_major_formatter(KvecFormatter(labels, banddata[:, 0:3]))
+        for i, ax in enumerate(self._axes):
+            ax.change_geometry(rows, numcols, i + 1)
 
     def plot_bands(
-            self, banddata, x_data_index = -1, formatstr = '',
-            crop_y=True, picker = 3, label = None, **keyargs):
-        """
-        Plot bands. plt.show() must be called to actually show the figure
+            self, banddata, k_data, formatstr='',
+            x_axis_formatter=CustomAxisFormatter(),
+            crop_y=True, picker=3, label=None, **kwargs):
+        """Plot bands. plt.show() must be called to actually show the figure
         afterwards.
-        The first four columns of banddata must correspond to kx-, ky-,
-        kz-components and magnitude of k, respectively. The remaining columns
-        will be the plotted bands.
-        If x_data_index == -1 (default), plots against the indices of banddata.
-        High symmetry points will be labeled.
-        x_data_index of 0, 1, 2 and 3 corresponds to kx-, ky-, kz-components
-        and magnitude of k, respectively.
-        If crop_y is true (default), the y-axis (frequency) will be limited
+
+        *banddata* has columns for each band to be plotted and a row for each
+        k_vector.
+        The four columns of *k_data* must correspond to kx-, ky-,
+        kz-components and magnitude of the k-vectors.
+        *banddata* and *k_data* must have same amount of rows.
+
+        *formatstr* is the format string forwarded to the pyplot.plot command.
+
+        *x_axis_formatter* is an object with the method
+        'apply_to_axis(axis, **kwargs)' which sets the x-axis' tickpositions,
+        major ticklabels and label. The default is CustomAxisFormatter() with
+        no major ticks.
+
+        If *crop_y* is true (default), the y-axis (frequency) will be limited
         so that only frequency values are shown where all bands are known.
         Alternatively, a numeric value of crop_y denotes the upper frequency
         value where the plot will be cropped.
 
-        """
-        self._crop_y = bool(crop_y)
-        if self._crop_y:
-            if crop_y is True:
-                self._crop_y_val = banddata[:,-1].min()
-            else:
-                self._crop_y_val = crop_y
+        *picker* (default: 3) is a radius in pixels around the cursor position
+        of a mouse click event in the plot. Any vertex inside this radius will
+        trigger the onclick function supplied when the Bandplotter object was
+        created. Multiple vertices inside this radius will not trigger multiple
+        function calls, but the event.ind list supplied to the function will
+        contain the data indices of all these vertices.
 
-        return self.plot_general(
-            banddata[:, 4:], x_data_index, banddata[:, :4], formatstr,
-            picker, label, **keyargs)
+        The *label* is the graph's label. It will be shown in a plot legend if
+        one is added.
 
-    def plot_general(
-            self, data, x_data_index = -1, k_data = None, formatstr = '',
-            picker = 3, label = None, **keyargs):
-        """
-        Plot data. plt.show() must be called to actually show the figure
-        afterwards.
-        if x_data_index == -1 (default), plots against the indices of data.
-        In this case, high symmetry points will only be labeled if k_data is
-        given, containing columns corresponding to kx-, ky-, kz-components
-        and magnitude of k, respectively.
-        x_data_index of 0, 1, 2 and 3 corresponds to kx-, ky-, kz-components
-        and magnitude of k, respectively, which must be given in k_data.
-        k_data and data must have same amount of rows.
+        All other keyword arguments *kwargs* will be forwarded to the
+        matplotlib plot function.
 
         """
-        if len(data) == 0:
+        if len(banddata) == 0:
             return
-        if x_data_index < 0:
-            self._x_data = np.arange(len(data))
-            if k_data is not None:
-                self._set_x_ticks_labels(
-                    k_data,
-                    num_labels=(-x_data_index if x_data_index < -1 else -1))
-        else:
-            if k_data is None:
-                raise ValueError('please give k_data')
-            self._x_data = k_data[:, x_data_index]
-            if x_data_index < 3:
-                self._ax.set_xlabel(
-                    r'Wave vector $k_{0}a/2\pi$'.format(
-                        ['x', 'y', 'z'][x_data_index]),
-                    size='x-large')
 
-        # keep reference to last data for add_light_cone and fill_between_bands:
-        self._last_data = data
+        # Keep reference to last banddata for add_light_cone,
+        # fill_between_bands and maybe other:
+        self._x_data = np.arange(len(banddata))
+        self._last_data = banddata
         self._last_kdata = k_data
 
-        if self._crop_y_val is not None:
-            if self._maxy == -float('inf'):
-                # first call of plot_general in this subplot:
-                self._maxy = self._crop_y_val
+        if crop_y:
+            if crop_y is True:
+                # Automatic cropping: Crop to just below the last band:
+                crop_y = banddata[:,-1].min()
+
+            if self._crop_y_val is None:
+                # Was not cropped before:
+                self._crop_y_val = crop_y
             else:
-                # not first call, maybe prev. maximum was less:
-                self._maxy = min(self._maxy, self._crop_y_val)
+                # Another graph in the same subplot is cropped, use minimum:
+                self._crop_y_val = min(self._crop_y_val, crop_y)
+
+        if self._crop_y_val is None:
+            # Neither this graph nor any other in this subplot need to be
+            # cropped, so set y-axis' maximum to maximum of data:
+            self._maxy = max(self._maxy, banddata.max())
         else:
-            # automatic cropping to maximum data:
-            self._maxy = max(self._maxy, data.max())
+            self._maxy = self._crop_y_val
 
-        self._miny = min(self._miny, data.min())
+        self._miny = min(self._miny, banddata.min())
 
-        if (not 'color' in keyargs and not 'c' in keyargs and
+        if (not 'color' in kwargs and not 'c' in kwargs and
                 _process_plot_format(formatstr)[-1] is None):
             # if no color for the plot is given, use automatic coloring:
-            keyargs['color'] = next(self._colors)
+            kwargs['color'] = next(self._colors)
 
-        if 'c' in keyargs:
-            self._last_color = keyargs['c']
+        if 'c' in kwargs:
+            self._last_color = kwargs['c']
         else:
-            self._last_color = keyargs['color']
+            self._last_color = kwargs['color']
 
-        self._ax.plot(
-            self._x_data, data, formatstr, label=label, **keyargs)
+        self._ax.plot(banddata, formatstr, label=label, **kwargs)
+
+        # get kwargs for ticklabel formatting:
+        if (x_axis_formatter.get_longest_label_length() >
+            defaults.long_xticklabels_when_longer_than):
+                kwargs = defaults.long_xticklabels_kwargs
+        else:
+                kwargs = defaults.xticklabels_kwargs
+
+        # set x axis ticks, ticklabels and axis label:
+        x_axis_formatter.apply_to_axis(
+            self._ax.get_xaxis(), **kwargs)
 
         if picker:
             # add invisible dots for picker
             # (if picker added to plots above, the lines connecting the dots
             # will fire picker event as well) - this is ok if no dots are shown
-            # Also, combine data so it is in one single dataset. This way,
+            # Also, combine banddata so it is in one single dataset. This way,
             # the event will fire only once, even when multiple dots coincide:
-            # (but then with multiple indexes)
-            xnum, bands = data.shape
+            # (but then with multiple indices)
+            xnum, bands = banddata.shape
             newdata = np.zeros((2, xnum * bands))
             for i, x in enumerate(self._x_data):
-                for j, y in enumerate(data[i, :]):
+                for j, y in enumerate(banddata[i, :]):
                     newdata[:, i + xnum*j] = [x, y]
             frmt = 'o'
             if not ('o' in formatstr or '.' in formatstr):
                 frmt += '-'
             self._ax.plot(
-                newdata[0], newdata[1], frmt, picker=picker, alpha = 0,
+                newdata[0], newdata[1], frmt, picker=picker, alpha=0,
                 label=label)
-
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
         if self._crop_y_val is not None:
+            # but only remove y-padding if y-data must be cropped:
             self._ax.set_ylim(self._miny, self._maxy)
 
     def plot_dos(self, dos, freqs):
+        """Plot density of states in the current subplot."""
         self._ax.plot(dos, freqs)
-        if self._crop_y_val is not None:
-            self._ax.set_ylim(0, self._crop_y_val)
         self._ax.set_xlabel('DOS', size='x-large')
         self._ax.set_ylabel('')
 
-    def _onpick(self, event):
-        try:
-            thisline = event.artist
-            xdata = thisline.get_xdata()
-            ydata = thisline.get_ydata()
-            ind = event.ind
-            xaxisformatter = event.mouseevent.inaxes.xaxis.major.formatter
-        except AttributeError:
-            return
-        print(thisline.get_label() + ' mode(s): ', end='')
-        if isinstance(xaxisformatter, KvecFormatter):
-            for i in ind:
-                print('k_index={0:.0f}, freq={1}; '.format(
-                    xdata[i] + 1, ydata[i]), end='')
-        else:
-            for i in ind:
-                omega = ydata[i] * g_speed_of_light * 2.0 * np.pi / self._fundlength
-                wlen = self._fundlength / ydata[i]
-                print('k={0}, freq={1}, omega={2} Hz, wlen={3} nm; '.format(
-                        xdata[i], ydata[i], omega, wlen), end = '')
-
-        #plt.ion()
-        #fig = plt.figure('mode pattern', figsize=(6, 2))
-        #ax = fig.add_subplot(121) #put mode pattern image here
-        #ax = fig.add_subplot(122)
-
-        # fmeep = w a / 2 pi c
-        # w = fmeep 2 pi c / a
-        # wlen = c / freq = c 2 pi / omega = c 2 pi / (2 pi c fmeep / a) = a / fmeep
-        print()
+        # matplotlib sometimes adds padding; remove it:
+        self._ax.set_xlim(min(self._x_data), max(self._x_data))
+        if self._crop_y_val is not None:
+            # but only remove y-padding if y-data must be cropped:
+            self._ax.set_ylim(self._miny, self._maxy)
 
     def add_light_cone(
             self, color='gray', alpha=0.5):
+        """Add a line cone to the current subplot.
+
+        Only works if plot_bands have been called before on this subplot.
+        """
         if self._last_kdata is None:
             raise ValueError(
                 'cannot add light cone: '
-                'k_data not given in last plot_general()')
+                'k_data not given in last plot_bands()')
         if alpha:
-            fillto = max(self._last_kdata[:, 3].max() * 1.1, self._maxy)
+            fillto = 1.1 * max(self._last_kdata[:, 3].max(),
+                               self._ax.get_ylim()[1])
             # As of Python version 3.4.3 and Matplotlib version 1.5.1, there is
             # a bug in Axes.fill_between, which, in certain cases (especially
             # when tight_layout is used or briefly just by moving the plot
@@ -351,97 +294,165 @@ class BandPlotter:
                 color=color, alpha=alpha)
 
         self._ax.plot(self._x_data, self._last_kdata[:, 3], color=color)
+
         # matplotlib sometimes adds padding; remove it:
-        self._ax.set_ylim(self._miny, self._maxy)
+        self._ax.set_xlim(min(self._x_data), max(self._x_data))
+        if self._crop_y_val is not None:
+            # but only remove y-padding if y-data must be cropped:
+            self._ax.set_ylim(self._miny, self._maxy)
 
-    def add_band_gap_rectangle(
-            self, after_band_num, color=None, alpha=0.5,
-            stop_at_light_line=False):
-        if self._last_data is None:
-            raise ValueError(
-                'cannot add band gap rectangle: '
-                'data not given in last plot_general()')
-        if color is None:
-            #use color of last plotted data:
-            color = self._last_color
-        y_bottom = max(self._last_data[:,after_band_num - 1])
-        y_top = min(self._last_data[:,after_band_num])
-        return self.add_band_gap_rectangle_manual(
-            y_bottom, y_top, color, alpha,
-            self._last_kdata if stop_at_light_line[:, 3] else None)
+    def add_band_gap_polygon(
+            self, points, color=None, alpha=0.35,
+            gap_text=defaults.default_gaptext):
+        """Add a band gap polygon to the current subplot.
 
-    def add_band_gap_rectangle_manual(
-            self, from_freq, to_freq, color=None, alpha=0.35,
-            light_line=None):
-        if from_freq < 0 or to_freq <= 0:
+        Add a polygon with the vertices *points* (a list of 2-tuples).
+        If *color* is None (default), use the color of the last plotted bands.
+        *alpha* is the opacity of the rectangle.
+        If *gap_text* is a string (defaults.default_gaptext), adds the text
+        (formatted with format(gapsize_in_percent)) to the center of the
+        polygon.
+
+        """
+        if len(points) == 0:
             return
         if color is None:
             #use color of last plotted data:
             color = self._last_color
-        h = to_freq - from_freq
-        center = (to_freq + from_freq) / 2
-        gapsize = h / center
-        gaptext='gap size: {0:.2f}%'.format(gapsize * 100)
-        if light_line is None:
-            x_left = self._x_data[0]
-            x_right = self._x_data[-1]
-            w = x_right - x_left
-            self._ax.add_patch(
-                mpl.patches.Rectangle((x_left, from_freq), width=w, height=h,
-                                      color=color, alpha=alpha))
-            self._ax.add_artist(
-                mpl.text.Text(text=gaptext, x=(x_left + x_right)/2, y=center,
-                              horizontalalignment='center',
-                              verticalalignment='center'))
-        else:
-            pts = []
-            # find out at which knum light_line crosses from_freq:
-            knum = 0
-            while light_line[knum] <= from_freq:
-                knum += 1
-            # now the light line crossed the lower frequency
-            lol = get_intersection_knum(
-                light_line[knum-1], light_line[knum], from_freq) + knum - 1
-            pts.append((lol, from_freq))
-            # now add points of light line until we cross upper frequency;
-            # or lower freq, then light line does not cross upper freq:
-            while light_line[knum] < to_freq and light_line[knum] > from_freq:
-                pts.append((knum, light_line[knum]))
-                knum += 1
-            if (light_line[knum] > from_freq):
-                # the light line crossed the upper frequency
-                hil = get_intersection_knum(
-                    light_line[knum-1], light_line[knum], to_freq) + knum - 1
-                pts.append((hil, to_freq))
-                # continue until we enter bandgap again:
-                while light_line[knum] >= to_freq:
-                    knum += 1
-                # now the light line crossed the upper frequency again
-                hir = get_intersection_knum(
-                    light_line[knum-1], light_line[knum], to_freq) + knum - 1
-                pts.append((hir, to_freq))
-                # now add points of light line until we leave band gap:
-                while light_line[knum] > from_freq:
-                    pts.append((knum, light_line[knum]))
-                    knum += 1
-                # now the light line crossed the lower frequency
-                lor = get_intersection_knum(
-                    light_line[knum-1], light_line[knum], from_freq) + knum - 1
-                pts.append((lor, from_freq))
-            else:
-                # the light line crossed the lower frequency before the upper
-                hil = lol
-                hir = lor = get_intersection_knum(
-                    light_line[knum-1], light_line[knum], from_freq) + knum - 1
-                pts.append((hil, from_freq))
 
-            self._ax.add_patch(
-                mpl.patches.Polygon(pts, color=color, alpha=alpha))
-            self._ax.add_artist(
-                mpl.text.Text(text=gaptext,
-                              x=(hil+lol+hir+lor)/4, y=center,
-                              horizontalalignment='center',
-                              verticalalignment='center'))
+        points=np.array(points)
+        self._ax.add_patch(
+            mpl.patches.Polygon(points, color=color, alpha=alpha))
+        # Get polygon's center to place text:
+        mx = points.max(axis=0)
+        mn = points.min(axis=0)
+        h = mx[1] - mn[1]
+        center = (mx[1] + mn[1]) / 2
+        gapsize = h / center
+        xcenter = (mx[0] + mn[0]) / 2
+        gaptext=gap_text.format(gapsize * 100)
+        self._ax.add_artist(
+            mpl.text.Text(text=gaptext,
+                        x=xcenter, y=center,
+                        horizontalalignment='center',
+                        verticalalignment='center'))
+
+    def add_band_gap_rectangle(
+            self, from_freq, to_freq, color=None, alpha=0.35,
+            light_line=None):
+        """Add a band gap rectangle to the current subplot.
+
+        Add a rectangle between the frequencies *from_freq* and *to_freq*.
+        If *color* is None (default), use the color of the last plotted bands.
+        *alpha* is the opacity of the rectangle.
+        If *light_line* is given (a list of frequencies, it is important to
+        supply exactly one frequency for each k-vector in the right order),
+        the rectangle will be clipped under the light line.
+
+        Note: This implementation supports clipping even if the light line
+        splits the bandgap into multiple parts.
+
+        """
+        if from_freq < 0 or to_freq <= 0:
+            return
+
+        rightindex = len(self._x_data) - 1
+
+        if light_line is None:
+            # add a rectangle not clipped by light line:
+            self.add_band_gap_polygon(
+                points=[(0, from_freq), (rightindex, from_freq),
+                        (rightindex, to_freq), (0, to_freq)],
+                color=color,
+                alpha=alpha)
+        else:
+            # light line provided, crop bandgap box at light line:
+
+            # We walk through the light line frequencies, and check at each
+            # index (i.e. at each k-vector) whether the light freq is above
+            # to_freq or below from_freq. If both are false, the light freq is
+            # in between, naturally.
+            #
+            # While going from one index to the next, if there is a transition
+            # from not above to above or vice versa, or from not below to below
+            # or vice versa, we calculate the intersection point and add it to
+            # the list of polygon points, together with the light freq points
+            # in between and the points on the corners of the bandgap box.
+            #
+            # Each time the light line enters the gap box from the bottom, we
+            # start a new polygon, and each time the light line leaves the
+            # bottom, we are finished with a polygon and add it to the plot.
+
+            above = light_line[0] >= to_freq
+            below = light_line[0] <= from_freq
+            points = []
+
+            if not below:
+                points.append((0, from_freq))
+                if above:
+                    points.append((0, to_freq))
+                else:
+                    points.append((0, light_line[0]))
+
+            for i in range(1, len(light_line)):
+                prev_below = below
+                prev_above = above
+                above = light_line[i] >= to_freq
+                below = light_line[i] <= from_freq
+
+                # The order of the following checks and appends is important.
+
+                # Check for transitions to inside, add intersections if needed:
+                if prev_above and not above:
+                    points.append((
+                        i - 1 + get_intersection_knum(
+                            light_line[i - 1], light_line[i], to_freq),
+                        to_freq))
+                elif prev_below and not below:
+                    # Here we actually start a new polygon, but the points
+                    # list should already be empty at this stage.
+                    points.append((
+                        i - 1 + get_intersection_knum(
+                            light_line[i - 1], light_line[i], from_freq),
+                        from_freq))
+                # Add point if light freq is in between:
+                if not above and not below:
+                    points.append((i, light_line[i]))
+                # Check for transitions to outside, add intersections if needed:
+                elif not prev_above and above:
+                    points.append((
+                        i - 1 + get_intersection_knum(
+                            light_line[i - 1], light_line[i], to_freq),
+                        to_freq))
+                elif not prev_below and below:
+                    # Here we close the polygon.
+                    points.append((
+                        i - 1 + get_intersection_knum(
+                            light_line[i - 1], light_line[i], from_freq),
+                        from_freq))
+                    # Add the polygon to the plot:
+                    self.add_band_gap_polygon(
+                        points=points,
+                        color=color,
+                        alpha=alpha)
+                    # And now empty the points list:
+                    points = []
+
+                # Note that we add nothing if (prev_below and below) or if
+                # (prev_above and above).
+
+            # After we walked through the light line frequencies, we still
+            # might need to close the polygon at right side:
+            if above:
+                points.append((rightindex, to_freq))
+            if not below:
+                points.append((rightindex, from_freq))
+
+            # Add the polygon to the plot:
+            self.add_band_gap_polygon(
+                points=points,
+                color=color,
+                alpha=alpha)
 
     def fill_between_bands(
             self, bandfrom, bandto, color = '#7f7fff', alpha=0.5):
@@ -453,35 +464,12 @@ class BandPlotter:
             self._x_data, self._last_data[:, bandfrom - 1],
             self._last_data[:, bandto - 1],
             color=color, alpha=alpha)
+
         # matplotlib sometimes adds padding; remove it:
-        self._ax.set_ylim(self._miny, self._maxy)
-
-    def _distribute_subplots(self):
-        rows = max(self._numrows, 1)
-        if self._numrows == 0:
-            numcols = 1
-            rows = self._numplots
-        else:
-            numcols = int(np.ceil(self._numplots / rows))
-            rows = min(rows, self._numplots)
-
-        for i, ax in enumerate(self._axes):
-            ax.change_geometry(rows, numcols, i + 1)
-
-    def next_plot(self):
-        self._numplots += 1
-        # add subplot somewhere where no other is yet. Final position
-        # will be set in _distribute_subplots
-        self._ax = self._fig.add_subplot(1, self._numplots, self._numplots)
-        self._ax.set_xlabel(r'Wave vector $ka/2\pi$', size='x-large')
-        self._ax.set_ylabel(r'Frequency $\omega a/2\pi c$', size='x-large')
-        self._ax.grid(True)
-        self._axes.append(self._ax)
-        self._maxy = -float('inf')
-        self._miny = float('inf')
-        # start new plot at blue again:
-        self._colors = cycle('bgrcmky')
-        self._distribute_subplots()
+        self._ax.set_xlim(min(self._x_data), max(self._x_data))
+        if self._crop_y_val is not None:
+            # but only remove y-padding if y-data must be cropped:
+            self._ax.set_ylim(self._miny, self._maxy)
 
     def add_legend(self, loc = 'upper left'):
         handles, labels = self._ax.get_legend_handles_labels()
@@ -510,67 +498,3 @@ class BandPlotter:
         if tight:
             plt.tight_layout()
         plt.show(block=block)
-
-
-def main():
-    from MPBOutputReader import MPBOutputReader
-##    reader = MPBOutputReader(g_filename5)
-##    print reader.get_band_types()
-##    print reader.get_data(reader.get_band_types()[0]).shape
-##    reader.print_raw_lines()
-##    return
-
-    g_filename = '../sims/pympbtest/TriHoles2D_test.out'
-    g_filename2 = '../sims/151116_TriPhC/2D_1BZ/out'
-
-    g_fnames = [g_filename, g_filename2]
-    g_xdataindices = [-1, -1]
-    numplots = 2
-
-    global plotter
-    plotter = BandPlotter()
-    for i, fname in enumerate(g_fnames[:numplots]):
-        reader = MPBOutputReader(fname)
-
-        if reader.has_multiple_bandtypes():
-            plotter.plot_bands(reader.get_data('tm'),
-                formatstr = 'bo-', x_data_index = g_xdataindices[i],
-                label='TM')
-            plotter.add_band_gap_rectangle([3, 3][i], color='blue')
-            plotter.plot_bands(reader.get_data('te'),
-                formatstr = 'ro-', x_data_index = g_xdataindices[i],
-                label='TE')
-            plotter.add_band_gap_rectangle([1,1][i], color='red')
-##            plotter.fill_between_bands(3, 12, alpha = 0.7)
-        else:
-            plotter.plot_bands(reader.get_data(),
-                x_data_index = g_xdataindices[i],
-                label=reader.get_band_types()[0])
-            plotter.add_band_gap_rectangle(1)
-
-
-        #plotter.add_light_cone(alpha = 0.7)
-##        if i == 1:
-##            plotter._ax.set_xlim(0.4, 0.5)
-##            plotter._ax.set_ylim(0.3, plotter._maxy)
-
-
-        plotter.set_plot_title(
-            ['this folder',
-            'trapezoidal SiN holes r0.375 2D'][i])
-        plotter.add_legend()
-        if i < numplots - 1:
-            plotter.next_plot()
-    plt.show()
-
-
-if __name__ == '__main__':
-    main()
-##    W1SiN()
-
-
-    # test:
-##    reader = MPBOutputReader('./sims/140319_W1slab/fullfine/out')
-##    reader.save_as_CSV('testout.csv', bandtype = 'zevenyodd')
-##    reader.save_band_to_CSV('W1_TE_yodd_band13_fine.csv', 13, 'zevenyodd')
-

@@ -22,6 +22,8 @@ from glob import glob1
 import re
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import numpy as np
+from fractions import Fraction
 
 import log
 
@@ -56,13 +58,13 @@ def max_epsilon(geometry, anisotropic_component=0):
         if isinstance(obj.material.epsilon, (list, tuple)) 
         else obj.material.epsilon 
         for obj in geometry.objects)
-            
+
 def get_intersection_freq(freq_left1, freq_right1, freq_left2, freq_right2):
     """Based on two lines, line1 from (n, freq_left1) to (n+1, freq_right1) and 
     line2 from (n, freq_left2) to (n+1, freq_right2), return the frequency 
     (y-value) where they intersect. It is not checked whether they intersect,
     so please take care of that.
-    
+
     """
     '''y1 = m * x1 + x0
     fr1 = m * 1 + fl1; m = fr1-fl1 /
@@ -80,73 +82,80 @@ def get_intersection_freq(freq_left1, freq_right1, freq_left2, freq_right2):
     '''
     return ((freq_right2*freq_left1 - freq_right1*freq_left2) / 
             (freq_right2-freq_left2-freq_right1+freq_left1))
-    
+
 def get_intersection_knum(freq_left, freq_right, freq_intersection):
     """Based on two lines, line1 from (0, freq_left) to (1, freq_right) and 
     a horizontal line at freq_intersection, return the knum (x-value) where 
     they intersect. It is not checked whether they intersect, so please take 
     care of that.
-    
+    If you use this to get the intersection between to other consecutive knums,
+    don't forget to add the left knum to the result.
+
     """
     #freq_intersection = (freq_right - freq_left) * xi + freq_left
     return (freq_intersection - freq_left) / (freq_right - freq_left)
 
 def get_gap_bands(
         banddata, threshold=5e-4, light_line=None):
-    """Return the band number after which a gap occurs (first band is band 1), 
+    """Calculate the band gaps from the banddata.
+
+    Return the band number after which a gap occurs (first band is band 1),
     the highest frequency of the band just below the gap, the lowest frequency 
     of the band just above the gap and the normalized gap width.
-    banddata must have shape (number_of_k_vecs, number_of_bands).
-    If light_line is given (list of frequency values, one for each k-vector),
+
+    *banddata* must have shape: (number_of_k_vecs, number_of_bands).
+    Gaps smaller than *threshold* will not be counted as gap.
+    If *light_line* is given (list of frequency values, one for each k-vector),
     band frequencies higher than the light line frequencies will be ignored.
-    
+
     """
+
     bands = []
     # the minimum frequency of each band:
     minfreqs = banddata.min(axis=0)
     # the maximum frequency of each band:
     maxfreqs = banddata.max(axis=0)
     if light_line is not None:
-        numk = banddata.shape[0]
+        # A light line is provided. Now, minfreqs and maxfreqs must be the
+        # minimum (maximum) of frequencies which are under the light line.
+        # So we just go through all k-vecs of each band and throw away all
+        # frequencies above the light line, but also linearly interpolate
+        # between consecutive k-vecs where one's frequency is above and the
+        # other's is below the light line, and include the frequency at the
+        # intersection with the light line.
+
         for bandnum in range(banddata.shape[1]):
             freqs = []
-            knum = 0
-            # increase knum until we cross the light line:
-            while knum < numk and banddata[knum, bandnum] > light_line[knum]:
-                knum += 1
-            if knum == numk:
-                # this band is completely above the light line
-                maxfreqs[bandnum] = -1
-                minfreqs[bandnum] = -1
-                continue
-            # now, we are below light line:
-            # first, add intersection to list:
-            if knum > 0:
-                freqs.append(get_intersection_freq(
-                    freq_left1=light_line[knum-1], 
-                    freq_right1=light_line[knum], 
-                    freq_left2=banddata[knum-1, bandnum], 
-                    freq_right2=banddata[knum, bandnum]))
-            # now, add freqs of knum and following to list, until we cross
-            # the light line again:
-            while knum < numk and banddata[knum, bandnum] <= light_line[knum]:
-                freqs.append(banddata[knum, bandnum])
-                knum += 1
-            # we are above the light line again, so add intersection:
-            if knum < numk: # only if we did not leave brillioun zone
-                freqs.append(get_intersection_freq(
-                    freq_left1=light_line[knum-1], 
-                    freq_right1=light_line[knum], 
-                    freq_left2=banddata[knum-1, bandnum], 
-                    freq_right2=banddata[knum, bandnum]))
-            
+            above = banddata[0, bandnum] > light_line[0]
+            for ik, freq in enumerate(banddata[:, bandnum]):
+                if freq <= light_line[ik]:
+                    if above:
+                        # the previous freq was above, so get intersection:
+                        freqs.append(get_intersection_freq(
+                            freq_left1=light_line[ik-1],
+                            freq_right1=light_line[ik],
+                            freq_left2=banddata[ik-1, bandnum],
+                            freq_right2=banddata[ik, bandnum]))
+                        above = False
+                    # keep the frequency:
+                    freqs.append(freq)
+                elif not above:
+                    # above light line, so throw away freq, but more important:
+                    # we crossed the light line, so add intersection:
+                    freqs.append(get_intersection_freq(
+                        freq_left1=light_line[ik-1],
+                        freq_right1=light_line[ik],
+                        freq_left2=banddata[ik-1, bandnum],
+                        freq_right2=banddata[ik, bandnum]))
+                    above = True
+
             if len(freqs) > 0:
                 maxfreqs[bandnum] = max(freqs)
                 minfreqs[bandnum] = min(freqs)
             else:
                 maxfreqs[bandnum] = -1
                 minfreqs[bandnum] = -1
-            
+
     for i in range(len(minfreqs) - 1):
         if (minfreqs[i + 1] - maxfreqs[i]) > threshold:
             # the bands are counted from 1:
@@ -157,7 +166,47 @@ def get_gap_bands(
             bands.append((bandnum, lo, hi, width))
     return bands
     
-    
+def strip_format_spec(format_str):
+    """Remove all format-specifications from the format-string.
+
+    Changes all format replacement fields in *format_str* containing
+    format-specs, e.g.: {0:3.{1}f}, to a field without format-spec, e.g. {0}.
+
+    This is useful if one needs to supply strings to a format_str intended for
+    accepting numbers only, e.g. 'x = {0:.3f}'.format('1/3') will not work, but
+    strip_format_spec('x = {0:.3f}').format('1/3') will return 'x = 1/3'.
+
+    """
+    # Build the regular expression pattern for finding format specifications:
+
+    # re that matches only non-escaped opening curly brackets:
+    a = r'(?<!\\){'
+    # re that matches anything not containing curly brackets or a colon:
+    b = '[^{}:]*'
+    # re that matches anything not containing curly brackets:
+    c = '[^{}]*'
+    # re that is intended to match nested pairs of curly brackets in the
+    # format specification, i.e. it matches anything without curly brackets
+    # enclosed inside a pair of curly brackets, with an optional suffix of
+    # any sign but curly brackets:
+    d = ''.join(['(?:{', c, '}', c, ')*'])
+    # The final re pattern matches format replacement fields containing
+    # format-specs, e.g.: {0:3.{1}f}, and saves the argument number in a
+    # group, e.g. in the example '0'.
+    re_pattern = ''.join([a, '(', b, '):', c, d, '}'])
+
+    # replace double curly brackets {{ with escaped curly brackets /{:
+    fstr = re.sub('{{', r'\\{', format_str)
+
+    # replace {X:...} with {X}, so that format_str accepts strings:
+    fstr = re.sub(re_pattern, r'{\1}', fstr)
+
+    # revoke the escaped curly brackets replacement:
+    fstr = re.sub(r'\\{', '{{', fstr)
+
+    return fstr
+
+
 def distribute_pattern_images(
         imgfolder, dstfile, borderpixel=5, only_k_slice=None, 
         title='', show=False):
@@ -380,5 +429,101 @@ def distribute_pattern_images(
             plt.show(block=False)
     else:
         del fig
-        
-    
+
+def do_runmode(
+        sim, runmode, num_processors, bands_plot_title, plot_crop_y,
+        convert_field_patterns, field_pattern_plot_k_slice, x_axis_hint):
+    """Start a job on the sim object, according to runmode.
+
+    Keyword arguments:
+
+    runmode -- can be one of the following:
+        ''       : just create and return the simulation object
+        'ctl'    : just write the ctl file to disk
+        'sim'    : run the simulation and do all postprocessing
+        'postpc' : do all postprocessing; simulation should have run before!
+        'display': display all pngs done during postprocessing. This is the
+                   only mode that is interactive.
+
+    num_processors   -- the number of processors used for the simulation.
+    bands_plot_title -- the title of the band diagrams made in post_processing.
+    plot_crop_y      -- the band diagrams are automatically cropped before the
+                        last band if plot_crop_y is True, alternatively use
+                        plot_crop_y to specify the max. y-value where the plot
+                        will be cropped.
+    convert_field_patterns --
+                        indicates whether field pattern h5 files should be
+                        converted to png (only when postprocessing). If this
+                        is true, a diagram with all patterns will be created
+                        with field patterns for all bands and for the k-vectors
+                        included in field_pattern_plot_k_slice
+    field_pattern_plot_k_slice --
+                        Which k-vecs to include in the field pattern diagram.
+                        This slice is a tuple with starting and ending
+                        (inclusive) index of the k-vectors where the patterns
+                        were exported during simulation, e.g. (0, 2) for the
+                        first, second and third exported k-vector.
+    x_axis_hint      -- gives a hint on which kind of ticks and labels should
+                        be shown on the x-axis of the band diagram and provides
+                        the data needed.
+                        Can be one of the following:
+                        - integer number:
+                            The axis' labels will be the 3D k-vectors. The
+                            number denotes the number of major ticks and labels
+                            distributed on the axis.
+                        - list([integer, format-string]):
+                            Same as above, but the labels are formatted with
+                            the format-string - this gives the possibility to
+                            only show one of the three vector components, e.g.
+                            the string "{2}" to only show the k-vector's
+                            z-component. The axis title will be inferred from
+                            the format-string.
+                        - KSpace object:
+                            This must be a KSpace object created with
+                            point_labels. These labels usually denote the high
+                            symmetry or crititical points, and they will be
+                            shown on the axis.
+                        - CustomAxisFormatter object:
+                            This gives the possibility to completely customize
+                            the x-axis' tick positions, tick labels and axis
+                            label. If the CustomAxisFormatter's hover data have
+                            not been set, it will be set here with the
+                            k-vectors read from the simulation results.
+    """
+    if not isinstance(runmode, str):
+        return sim
+
+    if runmode.startswith('c'): # create ctl file
+        sim.write_ctl_file(sim.workingdir)
+    elif runmode.startswith('s'): # run simulation
+        error = sim.run_simulation(num_processors=num_processors)
+        if error:
+            return False
+        # now continue with postprocessing:
+        runmode='postpc'
+    if runmode.startswith('p'): # postprocess
+        # create csv files of data and pngs:
+        sim.post_process(convert_field_patterns=convert_field_patterns)
+        # save band diagram as pdf&png:
+        sim.draw_bands(
+            title=bands_plot_title, crop_y=plot_crop_y,
+            x_axis_hint=x_axis_hint)
+        # save mode patterns to pdf&png:
+        if convert_field_patterns:
+            sim.draw_field_patterns(
+                title=bands_plot_title,
+                only_k_slice=field_pattern_plot_k_slice)
+    elif runmode.startswith('d'): # display pngs
+        # display png of epsilon:
+        sim.display_epsilon()
+        # save and show mode patterns in pdf:
+        if convert_field_patterns:
+            sim.draw_field_patterns(
+                title=bands_plot_title,
+                only_k_slice=field_pattern_plot_k_slice,
+                show=True)
+        # show band diagram:
+        sim.draw_bands(
+            title=bands_plot_title, show=True, crop_y=plot_crop_y,
+            x_axis_hint=x_axis_hint, save=False)
+    return sim

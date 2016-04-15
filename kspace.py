@@ -19,25 +19,36 @@ from defaults import default_k_interpolation
 import log
 
 class KSpace(object):
-    def __init__(self, points_list, **kwargs):
+    def __init__(
+            self, points_list, k_interpolation=default_k_interpolation,
+            point_labels = [], **kwargs):
         """Setup a k-space for the simulation with custom k-points.
 
         Keyword arguments:
-        points_list -- the list of critical k-points:
-                       Usually, a list of 3-tuples, but can also be a list of
-                       2-tuples or a list of numbers, from which the 3-tuples
-                       will be built internally by expanding the missing
-                       dimensions with zeros,
-                       e.g. [0.5, (0.5, 1)] -> [(0.5, 0, 0), (0.5, 1, 0)].
-        k_interpolation -- in the simulation, the points_list will be expanded
-                       by linearly interpolating between every consecutive pair
-                       of points, by adding k_interpolation points between each
-                       pair. (default: defaults.default_k_interpolation)
+        points_list     -- The sequence of critical k-points:
+                           Usually, a list of 3-tuples, but can also be a list
+                           of 2-tuples or a list of numbers, from which the
+                           3-tuples will be built internally by expanding the
+                           missing dimensions with zeros, e.g.
+                           [0.5, (0.5, 1)] -> [(0.5, 0, 0), (0.5, 1, 0)].
+        k_interpolation -- In the simulation, the points_list will be expanded
+                           by linearly interpolating between every consecutive
+                           pair of points, by adding k_interpolation points
+                           between each pair.
+                           (default: defaults.default_k_interpolation)
+        point_labels    -- (optional) A list of strings, one for each point in
+                           points_list. These strings denotes the high symmetry
+                           or critical point label of the points, e.g. 'Gamma'
+                           for the point (0, 0, 0). These labels will be added
+                           as comments to the point definitions in the ctl file
+                           and more importantly can be used as labels on the
+                           k-vector axis
         """
         # build list of 3-tuples:
         three_list = []
         for item in points_list:
             try:
+                # is it a sequence?
                 length = len(item)
                 if hasattr(item, 'isalnum'):
                     # This is a string. That is a single item,
@@ -60,20 +71,41 @@ class KSpace(object):
                     'KSpace: a point has been supplied with length > 3. '
                     'I will only use the first 3 entries.')
 
-        default_dict = {'k_interpolation':default_k_interpolation,
-                        'points_list':three_list}
+        # make sure point_labels has the right length, if it is specified:
+        pllen = len(point_labels)
+        if pllen and pllen < len(three_list):
+            # fill up with empty labels:
+            point_labels.extend([''] * len(three_list) - pllen)
+        # make local copy, and cut away excess labels:
+        point_labels = point_labels[:len(three_list)]
+
+
+        default_dict = {'k_interpolation':k_interpolation,
+                        'points_list':three_list,
+                        'point_labels':point_labels}
         default_dict.update(kwargs)
         self.__dict__.update(default_dict)
 
     def __str__(self):
-        vector3 = '\n    (vector3 %s %s %s)'
-        vectors = ''.join(vector3 % (x,y,z) for x,y,z in self.points())
-        if self.k_interpolation:
-            return ('(interpolate %i (list%s))' %
-            #return ('(kinterpolate-uniform %i (list %s))' %
-                    (self.k_interpolation, vectors))
+        vector3 = '    (vector3 %s %s %s)\n'
+        vector3_commented = '    (vector3 %s %s %s)%s\n'
+        if self.point_labels:
+            # only add '  ;' if label is not empty:
+            comments = ['  ;' + pl if pl else pl for pl in
+                             self.point_labels]
+            vectors = ''.join(
+                vector3_commented % (
+                    xyz[0], xyz[1], xyz[2], comments[i])
+                        for i, xyz in enumerate(self.points()))
         else:
-            return '(list%s)'%vectors
+            vectors = ''.join(vector3 % (x,y,z) for x,y,z in self.points())
+
+        if self.k_interpolation:
+            return ('(interpolate %i (list\n%s))' %
+            #return ('(kinterpolate-uniform %i (list\n%s))' %
+                (self.k_interpolation, vectors))
+        else:
+            return '(list\n%s)'%vectors
 
     def count_interpolated(self):
         """Return total number of k-vecs after interpolation."""
@@ -86,6 +118,23 @@ class KSpace(object):
         """
         return self.points_list
 
+    def has_labels(self):
+        """Was this KSpace object created with point_labels specified?"""
+        return (len(self.point_labels) and
+                len(self.points()) == len(self.point_labels))
+
+    def labels(self):
+        """Return the list of labels, one for each entry in points().
+
+        If this KSpace object was not created with point_labels specified,
+        this will return an empty list.
+
+        """
+        if self.has_labels():
+            return self.point_labels[:]
+        else:
+            return []
+
 class KSpaceTriangular(KSpace):
     def __init__(self, k_interpolation=default_k_interpolation):
         """Setup a k-space for the simulation with critical k-points along the
@@ -96,7 +145,8 @@ class KSpaceTriangular(KSpace):
         KSpace.__init__(self,
             points_list=[(0, 0, 0), (0, 0.5, 0), ('(/ -3)', '(/ 3)', 0),
                          (0, 0, 0)],
-            k_interpolation=k_interpolation)
+            k_interpolation=k_interpolation,
+            point_labels=['Gamma', 'M', 'K', 'Gamma'])
 
 class KSpaceRectangular(KSpace):
     def __init__(self, k_interpolation=default_k_interpolation):
@@ -108,7 +158,8 @@ class KSpaceRectangular(KSpace):
         KSpace.__init__(self,
             points_list=[(0, 0, 0), (0.5, 0, 0), (0.5, 0.5, 0),
                          (0, 0, 0)],
-            k_interpolation=k_interpolation)
+            k_interpolation=k_interpolation,
+            point_labels=['Gamma', 'X', 'M', 'Gamma'])
 
 class KSpaceRectangularGrid(KSpace):
     def __init__(self, x_steps, y_steps):

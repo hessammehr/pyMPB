@@ -18,67 +18,7 @@ from kspace import KSpaceTriangular
 from objects import Dielectric, Rod, Block
 from defaults import default_initcode
 from defaults import default_band_func_te, default_band_func_tm
-
-def do_runmode(
-        sim, runmode, num_processors, bands_plot_title, plot_crop_y,
-        convert_field_patterns, field_pattern_plot_k_slice):
-    """Start a job on the sim object, according to runmode.
-    runmode can be one of the following:
-        ''       : just create and return the simulation object
-        'ctl'    : just write the ctl file to disk
-        'sim'    : run the simulation and do all postprocessing
-        'postpc' : do all postprocessing; simulation should have run before!
-        'display': display all pngs done during postprocessing. This is the
-                   only mode that is interactive.
-    num_processors is the number of processors used for the simulation;
-    bands_plot_title is the title of the band diagrams made in post_processing,
-    these diagrams are automatically cropped before the last band if
-    plot_crop_y is True, alternatively use plot_crop_y to specify the max. y
-    value where the plot will be cropped;
-    convert_field_patterns indicates whether field pattern h5 files should be
-    converted to png (only when postprocessing). If this is true, a diagram
-    with all patterns will be created with field patterns for all bands and for
-    the k-vectors included in field_pattern_plot_k_slice: This slice is a tuple
-    with starting and ending (inclusive) index of the k-vectors where the
-    patterns where exported during simulation, e.g. (0, 2) for the first,
-    second and third exported k-vector.
-
-    """
-    if not isinstance(runmode, str):
-        return sim
-
-    if runmode.startswith('c'): # create ctl file
-        sim.write_ctl_file(sim.workingdir)
-    elif runmode.startswith('s'): # run simulation
-        error = sim.run_simulation(num_processors=num_processors)
-        if error:
-            return False
-        # now continue with postprocessing:
-        runmode='postpc'
-    if runmode.startswith('p'): # postprocess
-        # create csv files of data and pngs:
-        sim.post_process(convert_field_patterns=convert_field_patterns)
-        # save band diagram as pdf&png:
-        sim.draw_bands(
-            title=bands_plot_title, crop_y=plot_crop_y)
-        # save mode patterns to pdf&png:
-        if convert_field_patterns:
-            sim.draw_field_patterns(
-                title=bands_plot_title,
-                only_k_slice=field_pattern_plot_k_slice)
-    elif runmode.startswith('d'): # display pngs
-        # display png of epsilon:
-        sim.display_epsilon()
-        # save and show mode patterns in pdf:
-        if convert_field_patterns:
-            sim.draw_field_patterns(
-                title=bands_plot_title,
-                only_k_slice=field_pattern_plot_k_slice,
-                show=True)
-        # save band diagram as pdf and show:
-        sim.draw_bands(
-            title=bands_plot_title, show=True, crop_y=plot_crop_y)
-    return sim
+from utility import do_runmode
 
 def TriHoles2D(
         material, radius, numbands=8, k_interpolation=11, 
@@ -157,7 +97,8 @@ def TriHoles2D(
                       plot_crop_y=True, # automatic cropping
                       convert_field_patterns=convert_field_patterns,
                       # don't add gamma point a second time (index 3):
-                      field_pattern_plot_k_slice=(0,2)
+                      field_pattern_plot_k_slice=(0,2),
+                      x_axis_hint=kspace
                      )
 
 
@@ -247,5 +188,6 @@ def TriHolesSlab3D(
                       plot_crop_y=0.8, # crop at 0.8
                       convert_field_patterns=convert_field_patterns,
                       # don't add gamma point a second time (index 3):
-                      field_pattern_plot_k_slice=(0,2)
+                      field_pattern_plot_k_slice=(0,2),
+                      x_axis_hint=kspace
                      )

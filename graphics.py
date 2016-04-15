@@ -22,17 +22,17 @@ import numpy as np
 from numpy import loadtxt
 from utility import max_epsilon, get_gap_bands
 from defaults import fig_size, contour_lines, contour_filled, contour_plain,\
-    colorbar_style
+    colorbar_style, default_x_axis_hint
+from kspace import KSpace
 from bandplotter import BandPlotter
+import axis_formatter
 import objects
 import log
 
 def draw_geometry(
         geometry,jobname,format='pdf', display=True, block_when_showing=True,
         anisotropic_component=0):
-# TODO
-    """WARNING: 
-    needs to be adapted to work with anisotropic material
+    """#FIXME: needs to be adapted to work with anisotropic material
     
     Draw and save the geometry. Save as file jobname+.+format. 
     Only show figure if display=True (default). When showing, block script if 
@@ -40,7 +40,7 @@ def draw_geometry(
     draw anisotropic_component (default 0).
     """
     global maxeps
-    # I commented clf(), because it just opens an unneccessary new empty 
+    # I commented clf(), because it just opens an unnecessary new empty
     # figure window, the same that figure() does below.
     #plt.clf()
     maxeps = max_epsilon(geometry, anisotropic_component)
@@ -66,9 +66,7 @@ def draw_geometry(
         plt.close(fig)
 
 def draw_rod(index, rod, anisotropic_component=0):
-# TODO
-    """WARNING: 
-    needs to be adapted to work with anisotropic material
+    """#FIXME needs to be adapted to work with anisotropic material
     
     """
     if isinstance(rod.material.epsilon, (list, tuple)):
@@ -102,7 +100,7 @@ def draw_bandstructure_2D(
     """Draw 2D band contour map of one band."""
     #clf()
     fig = plt.figure(figsize=fig_size)
-    ax = fig.add_subplot(111,aspect='equal')
+    ax = fig.add_subplot(111, aspect='equal')
     x,y,z = loadtxt(
         "{0}_{1}{2}".format(jobname, mode, ext),
         delimiter=', ',
@@ -115,55 +113,118 @@ def draw_bandstructure_2D(
         yi = np.linspace(-0.5, 0.5, kspace.y_steps)
         zi = griddata(x, y, z, xi, yi, interp='linear')
         if filled:
-            cs = ax.contourf(xi,yi,zi,levels,**contour_filled)
-            legend and plt.colorbar(cs,**colorbar_style)
-            cs = lines and ax.contour(xi,yi,zi,levels,**contour_lines)
-            labeled and lines and plt.clabel(cs,fontsize=8,inline=1)
+            cs = ax.contourf(xi, yi, zi, levels, **contour_filled)
+            legend and plt.colorbar(cs, **colorbar_style)
+            cs = lines and ax.contour(xi, yi, zi, levels, **contour_lines)
+            labeled and lines and plt.clabel(cs, fontsize=8, inline=1)
         else:
-            cs = ax.contour(xi,yi,zi,levels,**contour_plain)
-            legend and plt.colorbar(cs,**colorbar_style)
-            labeled and plt.clabel(cs,fontsize=8,inline=1)    
-        ax.set_xlim(-0.5,0.5)
-        ax.set_ylim(-0.5,0.5)
+            cs = ax.contour(xi, yi, zi, levels, **contour_plain)
+            legend and plt.colorbar(cs, **colorbar_style)
+            labeled and plt.clabel(cs, fontsize=8, inline=1)
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
     else:
         plt.plot(x, y, z)
     plt.savefig(jobname,format=format,transparent=True)
     plt.show()
 
 def draw_bands(
-        jobname, modes, custom_plotter=None, title='', crop_y=True, 
-        light_cone=False):
-    """Draw all bands calculated along all k vecs in a band diagram.
+        jobname, modes, x_axis_hint=default_x_axis_hint, custom_plotter=None,
+        title='', crop_y=True, light_cone=False):
+    """Plot dispersion relation of all bands calculated along all k vectors.
 
-    Draws dispersion relation with matplotlib in one subplot.
-    If crop_y is true (default), the y-axis (frequency) will be limited 
-    so that only frequency values are shown where all bands are known.
-    Alternatively, a numeric value of crop_y denotes the upper frequency
-    value where the plot will be cropped.
     The band data is loaded from previously saved .csv files.
-    
+    (filenames: [*jobname* + '_' + *mode* + '.csv' for mode in modes])
+
+    *x_axis_hint* gives a hint on which kind of ticks and labels should be
+    shown on the x-axis and provides the data needed.
+    *x_axis_hint* can be one of the following:
+    -- integer number: The axis' labels will be the 3D k-vectors. The number
+           denotes the number of major ticks and labels distributed on the axis.
+    -- [integer, format-string]: Same as above, but the labels are formatted
+           with the format-string - this gives the possibility to only show one
+           of the three vector components, e.g. the string "{2}" to only show
+           the k-vector's z-component. The axis title will be inferred from
+           the format-string.
+    -- KSpace object: This must be a KSpace object created with point_labels.
+           These labels usually denote the high symmetry or crititical points,
+           and they will be shown on the axis.
+    -- CustomAxisFormatter object: This gives the possibility to completely
+           customize the x-axis' tick positions, tick labels and axis label.
+           If the CustomAxisFormatter's hover data have not been set, it will
+           be set here with the k-vectors read from the .csv file.
+
+    If you want to add the graph to an existing figure, supply a BandPlotter
+    with *custom_plotter*, otherwise (default: custom_plotter=None) a new
+    BandPlotter is created and returned.
+
+    *title* is the subplot's title.
+
+    If *crop_y* is true (default), the y-axis (frequency) will be limited
+    so that only frequency values are shown where all bands are known.
+    Alternatively, a numeric value of *crop_y* denotes the upper frequency
+    value where the plot will be cropped.
+
+    If *light_cone*, add a light cone and crop the bandgaps at the light line.
+
     """
     if custom_plotter is None:
         plotter = BandPlotter()
     else:
         plotter = custom_plotter
         plotter.next_plot()
-    
+
+    x_axis_formatter = None
+    if isinstance(x_axis_hint, axis_formatter.CustomAxisFormatter):
+        # use the supplied CustomAxisFormatter:
+        x_axis_formatter = x_axis_hint
+    elif isinstance(x_axis_hint, KSpace):
+        # make a KSpaceAxisFormatter instance from kspace object:
+        x_axis_formatter = axis_formatter.KSpaceAxisFormatter(x_axis_hint)
+    elif isinstance(x_axis_hint, int):
+        # make a standard KVectorAxisFormatter with supplied number of ticks:
+        x_axis_formatter = axis_formatter.KVectorAxisFormatter(x_axis_hint)
+    else:
+        try:
+            # is this a sequence?
+            hintlen = len(x_axis_hint)
+        except TypeError:
+            # no sequence
+            hintlen = 0
+        if hintlen > 1 and (isinstance(x_axis_hint[0], int) and
+                hasattr(x_axis_hint[1], 'format')):
+            # Supplied a list with at least an int and format_str.
+            # Use all items in list as KVectorAxisFormatter arguments:
+            x_axis_formatter = axis_formatter.KVectorAxisFormatter(
+                *x_axis_hint)
+    if x_axis_formatter is None:
+        log.warning('draw_bands: Did not understand x_axis_hint, '
+            'using default.')
+        x_axis_formatter = axis_formatter.KVectorAxisFormatter(
+            default_x_axis_hint)
+
+
     for i, mode in enumerate(modes):
         fname = jobname + '_' + mode + '.csv' if mode else jobname + '.csv'
         data = loadtxt(fname, delimiter=',', skiprows=1)
-        
-        plotter.plot_bands(data[:, 1:],
-            formatstr = 'o-', x_data_index = -1,
+
+        # add hover data:
+        if x_axis_formatter._hover_func_is_default:
+            x_axis_formatter.set_hover_data(data[:, 1:4])
+
+        plotter.plot_bands(
+            data[:, 5:], data[:, 1:5],
+            formatstr='o-',
+            x_axis_formatter=x_axis_formatter,
             label=mode.upper(), crop_y=crop_y)
         if light_cone:
             gapbands = get_gap_bands(data[:, 5:], light_line=data[:, 4])
         else:
             gapbands = get_gap_bands(data[:, 5:])
         for band in gapbands:
-            plotter.add_band_gap_rectangle_manual(
+            plotter.add_band_gap_rectangle(
                 band[1], band[2],
-                light_line=data[:,4] if light_cone else None)   
+                light_line=data[:,4] if light_cone else None)
 
     if light_cone:
         plotter.add_light_cone()
@@ -174,9 +235,7 @@ def draw_bands(
     return plotter
     
 def draw_dos(jobname, modes, custom_plotter=None, title=''):
-    """Draw density of states.
-    Draw dos-data with matplotlib in one subplot.
-    """
+    """Draw density of states with matplotlib in one subplot. """
     if custom_plotter is None:
         plotter = BandPlotter()
         callnextplot = False
