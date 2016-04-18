@@ -59,7 +59,7 @@ def main():
             return
     
         # load te mode band data:
-        fname = path.join(sim.workingdir, sim.jobname + '_te.csv')
+        fname = path.join(sim.workingdir, sim.jobname + '_tefreqs.csv')
         data = np.loadtxt(fname, delimiter=',', skiprows=1)
         gapbands = get_gap_bands(data[:, 5:])
         

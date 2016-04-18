@@ -395,6 +395,33 @@ class Simulation(object):
         #print('|')      
         return retcode
     
+    def _export_data_helper(self, output_buffer, dataname):
+        """grep for *dataname* in  *output_buffer* and save the data following
+        it to a .csv file.
+
+        *output_buffer* is a multiline string returned from outputfile.read(),
+        where outputfile is the file object of the MPB output opened in read
+        mode.
+
+        *dataname* is something like 'tefreqs', 'zevenfreqs', 'freqs',
+        'yparity' or anything else that can be found in the output file, where
+        the line starts with *dataname*, is followed by ':' and the data to be
+        exported in the same line.
+
+        """
+        pp_file_name = '{0}_{1}.csv'.format(self.jobname, dataname)
+        pattern = r'^{0}:, (.+)'.format(dataname.lower())
+        output_lines = [
+            x + '\n' for x in findall(pattern, output_buffer, re.MULTILINE)]
+        if output_lines:
+            log.info("writing {0} data to {1}".format(dataname, pp_file_name))
+            with open(
+                    path.join(
+                        self.workingdir, pp_file_name), 'w') as pp_file:
+                pp_file.writelines(output_lines)
+        else:
+            log.info("No {0} data found in output".format(dataname))
+
     def post_process(self, convert_field_patterns=True):
         # make csv files for all band information:
         try:
@@ -418,71 +445,21 @@ class Simulation(object):
                 log.exception('Cannot post-process, no simulation output '
                               'file found!')
                 return
-        pp_buffer = output_file.read()
+        output_buffer = output_file.read()
         output_file.close()
         for mode in self.modes:
-            # export frequencies: (for band diagrams)
             if mode:
-                pp_file_name = '{0}_{1}.csv'.format(self.jobname, mode)
-                pattern = r'^{0}freqs:, (.+)'.format(mode.lower())
                 log.info("post-processing mode: {0}".format(mode))
             else:
-                pp_file_name = '{0}.csv'.format(self.jobname)
-                pattern = r'^freqs:, (.+)'
-                log.info("post-processing all modes")
+                log.info(
+                    'post-processing '
+                    '(unrestricted modes, simulated with (run))')
 
-            #pattern = mode == 'tm' and r'tmfreqs:, (.+)' or r'tefreqs:, (.+)'
-            log.info("writing band data to {0}".format(pp_file_name))
-            output_lines = [
-                x + '\n' for x in findall(pattern, pp_buffer, re.MULTILINE)]
-            with open(
-                    path.join(self.workingdir, pp_file_name), 'w') as pp_file:
-                pp_file.writelines(output_lines)
-
-            # export group velocities (if available):
-            if mode:
-                pp_file_name = '{0}_velocity_{1}.csv'.format(
-                    self.jobname, mode)
-                pattern = r'^{0}velocity:, (.+)'.format(mode.lower())
-            else:
-                pp_file_name = '{0}_velocity.csv'.format(self.jobname)
-                pattern = r'^velocity:, (.+)'
-            output_lines = [
-                x + '\n' for x in findall(pattern, pp_buffer, re.MULTILINE)]
-            if output_lines:
-                log.info("writing group velocity data to {0}".format(
-                    pp_file_name))
-                with open(
-                        path.join(
-                            self.workingdir, pp_file_name), 'w') as pp_file:
-                    pp_file.writelines(output_lines)                
-
-            # export density of states (if available):    
-            if mode:
-                pp_file_name = '{0}_dos_{1}.csv'.format(self.jobname, mode)
-                pattern = r'^{0}dos:, (.+)'.format(mode.lower())
-            else:
-                pp_file_name = '{0}_dos.csv'.format(self.jobname)
-                pattern = r'^dos:, (.+)'
-            output_lines = [
-                x + '\n' for x in findall(pattern, pp_buffer, re.MULTILINE)]
-            if output_lines:
-                log.info("writing dos data to {0}".format(pp_file_name))
-                with open(
-                        path.join(
-                            self.workingdir, pp_file_name), 'w') as pp_file:
-                    pp_file.writelines(output_lines)
-
-        # it would have been nice, to extract the gaps from MPB output,
-        # but now we have a gap extraction method in utility.py, which can 
-        # also take the light_cone into consideration:
-        # following does not find all Gaps in output, only one for each mode  
-        #gaps = findall(
-        #       r'^(.*)freqs:, .+$(?:\n.*)+?\n(Gap from band (.+)\((.+)\)'
-        #       r' to band (.+)\((.+)\), (.+)%\n)+', 
-        #              pp_buffer, re.MULTILINE)
-        #for line in result:
-        #    print line
+            # export frequencies: (for band diagrams)
+            # try to export all possible data:
+            datanames = ['freqs', 'velocity', 'dos', 'yparity', 'zparity']
+            for dataname in datanames:
+                self._export_data_helper(output_buffer, mode + dataname)
 
         if not path.exists(self.eps_file) and path.isfile(self.eps_file + '~'):
             # The epsilon.h5 file was renamed before to mark it as temporary.

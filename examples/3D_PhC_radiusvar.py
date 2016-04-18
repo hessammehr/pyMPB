@@ -60,10 +60,10 @@ def main():
             return
     
         # load zeven mode band data:
-        fname = path.join(sim.workingdir, sim.jobname + '_zeven.csv')
+        fname = path.join(sim.workingdir, sim.jobname + '_zevenfreqs.csv')
         data = np.loadtxt(fname, delimiter=',', skiprows=1)
-        gapbands = get_gap_bands(data[:, 5:])
-        
+        gapbands = get_gap_bands(data[:, 5:], light_line=data[:, 4])
+
         # maybe there is no gap?
         if len(gapbands) == 0:
             gap = 0

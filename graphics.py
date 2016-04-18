@@ -134,7 +134,7 @@ def draw_bands(
     """Plot dispersion relation of all bands calculated along all k vectors.
 
     The band data is loaded from previously saved .csv files.
-    (filenames: [*jobname* + '_' + *mode* + '.csv' for mode in modes])
+    (filenames: [*jobname* + '_' + *mode* + 'freqs.csv' for mode in modes])
 
     *x_axis_hint* gives a hint on which kind of ticks and labels should be
     shown on the x-axis and provides the data needed.
@@ -203,9 +203,8 @@ def draw_bands(
         x_axis_formatter = axis_formatter.KVectorAxisFormatter(
             default_x_axis_hint)
 
-
     for i, mode in enumerate(modes):
-        fname = jobname + '_' + mode + '.csv' if mode else jobname + '.csv'
+        fname = '{0}_{1}freqs.csv'.format(jobname, mode)
         data = loadtxt(fname, delimiter=',', skiprows=1)
 
         # add hover data:
