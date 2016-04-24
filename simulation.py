@@ -17,8 +17,6 @@ from os import path, environ, remove, rename, mkdir
 import sys
 from shutil import rmtree
 import subprocess as sp
-#from tempfile import NamedTemporaryFile as ntempfile
-from re import findall
 import re
 import defaults
 import graphics
@@ -41,25 +39,26 @@ class Simulation(object):
             work_in_subfolder=True, clear_subfolder=True,
             logger=True, quiet=defaults.isQuiet):
         """Create a simulation object with all parameters describing the
-        simulation, including a unique jobname (all generated filenames will
-        include this name), the geometry (pyMPB Geometry object), the kspace
-        (a pyMPB KSpace object), the resolution, mesh_size (see MPB docs),
-        number of bands to calculate and some optional strings with Scheme
-        code which will be added to the MPB .ctl file as initialization code
-        (initcode), as run commands (runcode) and as code executed after the
-        simulation (postcode).
+        simulation, including a unique jobname (all generated filenames
+        will include this name), the geometry (pyMPB Geometry object),
+        the kspace (a pyMPB KSpace object), the resolution, mesh_size
+        (see MPB docs), number of bands to calculate and some optional
+        strings with Scheme code which will be added to the MPB .ctl
+        file as initialization code (initcode), as run commands
+        (runcode) and as code executed after the simulation (postcode).
 
-        If work_in_subfolder is True (default), all simulation and log output
-        will be placed in a separate subdirectory called like the jobname. Set
-        clear_subfolder to True (default) if you want this subfolder to be
-        emptied (will make backup if there is an old folder with the same name).
-        clear_subfolder should be False if you want to do postprocessing on
-        existing simulation data.
+        If work_in_subfolder is True (default), all simulation and log
+        output will be placed in a separate subdirectory called like the
+        jobname. Set clear_subfolder to True (default) if you want this
+        subfolder to be emptied (will make backup if there is an old
+        folder with the same name). clear_subfolder should be False if
+        you want to do postprocessing on existing simulation data.
 
-        If logger is True (default), a jobname.log file will be created with
-        all pyMPB output and errors. This output will also go to stdout if
-        quiet is False. Alternatively, set logger to a customized logger (any
-        object with log(level, msg, *args, **kwargs) method).
+        If logger is True (default), a jobname.log file will be created
+        with all pyMPB output and errors. This output will also go to
+        stdout if quiet is False. Alternatively, set logger to a
+        customized logger (any object with log(level, msg, *args,
+        **kwargs) method).
 
         """
 
@@ -107,8 +106,9 @@ class Simulation(object):
                     # directory exists, make backup
                     backupdir = self.workingdir + '_bak'
                     if path.exists(backupdir):
-                        # previous backup exists already, remove old backup,
-                        # but keep .log and .out files (they have unique names):
+                        # previous backup exists already, remove old
+                        # backup, but keep .log and .out files (they have
+                        # unique names):
                         keepers = (glob1(self.workingdir + '_bak', '*.log') +
                                 glob1(self.workingdir + '_bak', '*.out'))
                         to_log.append(
@@ -126,7 +126,8 @@ class Simulation(object):
                                   ' renamed to ' + backupdir)
                     # make new empty working directory:
                     mkdir(self.workingdir)
-                    to_log.append('created directory ' + self.workingdir + '\n')
+                    to_log.append(
+                        'created directory ' + self.workingdir + '\n')
                 else:
                     to_log.append('working in existing directory.')
             else:
@@ -139,10 +140,10 @@ class Simulation(object):
                 # a custom logger was given as parameter, use it:
                 log.logger = logger
             else:
-                # Create the logger. Afterwards, we can also use log.info() etc.
-                # in other modules. All status, logging and stderr output will
-                # go through this logger (except MPB's output during
-                # simulation):
+                # Create the logger. Afterwards, we can also use
+                # log.info() etc. in other modules. All status, logging
+                # and stderr output will go through this logger (except
+                # MPB's output during simulation):
                 log.setup_logger(
                     'root.' + self.jobname, self.log_file, self.quiet,
                     redirect_stderr=True)
@@ -155,8 +156,7 @@ class Simulation(object):
         # get modes from runcode:
         self.modes = re.findall("\(run[-]?(.*?)[\s\)]", runcode, re.MULTILINE)
 
-        self.number_of_tiles_to_output = \
-            defaults.default_number_of_tiles_to_output
+        self.number_of_tiles_to_output = defaults.number_of_tiles_to_output
 
         # In 3D, there are no pure tm or te modes. MPB renames them 
         # automatically to zodd and zeven, respectively. Do the same:
@@ -186,8 +186,8 @@ class Simulation(object):
             'pyMPB Simulation created with following properties:' + 
             ''.join(['\npyMPBprop: {0}={1}'.format(key, val) for key, val in 
                 self.__dict__.items()]) + '\n\n')
-        #TODO log all parameters of Simulation object in such a way that it can 
-        # be recreated exactly.
+        # TODO log all parameters of Simulation object in such a way
+        # that it can be recreated exactly.
         # Maybe even add relevant parts of data.py and defaults.py
 
     def __str__(self):
@@ -211,7 +211,8 @@ class Simulation(object):
         mpb_call_str = defaults.mpb_call % dict(num_procs=num_processors)
 
         with open(self.out_file, 'w') as outputFile:
-            log.info("Running the MPB-computation using the following call:\n" +
+            log.info("Running the MPB-computation using the following "
+                     "call:\n" +
                 " ".join([mpb_call_str, self.ctl_file]))
             log.info("Writing MPB output to %s" % self.out_file)
             # write Time and ctl as reference:     
@@ -282,8 +283,8 @@ class Simulation(object):
         return retcode
 
     def fieldpatterns_to_png(self):
-        """Convert all field patterns (saved during simulation in h5-files) to 
-        png-files. Move them to subdirectories. Move the h5-files to the
+        """Convert all field patterns (saved during simulation in h5-files)
+        to png-files. Move them to subdirectories. Move the h5-files to the
         subdirectory 'patterns_h5~'. epsilon_to_png must be called before!
 
         """
@@ -300,21 +301,21 @@ class Simulation(object):
                     "creating subdirectory: " + defaults.temporary_h5_folder)
                 mkdir(path.join(self.workingdir, defaults.temporary_h5_folder))
 
-        log.info("will now convert following files to png: %s" % filenames)
-        log.info("on all these files, mpb-data will be called like so:")
+        log.info("Will now convert following files to png: %s" % filenames)
+        log.info("On all these files, mpb-data will be called with the "
+                 "command:")
         log.info(defaults.mpbdata_call % dict(
             self.__dict__,
             output_file=defaults.temporary_h5,
             h5_file='<file.h5>'))
-        log.info("and then 4 times h5topng:")
-        for comp in ['.r', '.i']:            
+        log.info("and then 4 times h5topng for each field component:")
+        for ri in ['.r', '.i']:
             dct = dict(self.__dict__, 
-               h5_file=defaults.temporary_h5 + ':' +
-                   defaults.default_field_component_to_export + comp,
+               h5_file=defaults.temporary_h5 + ':<xyz>' + ri,
                eps_file=defaults.temporary_epsh5,
-               output_file='<mode>/<filename>' + comp + '.png',
-               output_file_no_ovl='<mode>_no_ovl/<filename>' + 
-                   comp + '.png')
+               output_file='pngs_<mode>/<filename>[.<xyz>]' + ri + '.png',
+               output_file_no_ovl='pngs_<mode>_no_ovl/<filename>[.<xyz>]' +
+                   ri + '.png')
             if self.geometry.is3D:
                 log.info(defaults.fieldh5topng_call_3D % dct)
                 log.info(defaults.fieldh5topng_call_3D_no_ovl % dct)
@@ -323,18 +324,45 @@ class Simulation(object):
                 log.info(defaults.fieldh5topng_call_2D_no_ovl % dct)
         log.info("and finally move the h5 file to temporary folder " + 
                             defaults.temporary_h5_folder)
-        # for 'progress bar':
-        #print('|' + "-" * len(filenames) + '|\n|', end='')
 
-        # i will later try to extract the mode from file name:
-        findmode_re = re.compile(r'.*[.](.+?)[.]h5')
+        # Build the regular expression pattern for parsing filenames:
+
+        # re that matches the field (e, d or h):
+        f = '[edh]'
+        # re that matches the k number part, starting with '.':
+        k = r'[.]k\d+'
+        # re that matches the band number part, starting with '.':
+        b = r'[.]b\d+'
+        # re that matches the field component (.x, .y or .z) or nothing:
+        c = '(?:[.](?P<comp>[xyz]))?'
+        # re that matches anything following '.', which does not contain
+        # another period (this should be the mode: te, tm, zodd etc.):
+        m = '(?:[.](?P<mode>[^.]+))?'
+        # The final re pattern matches MPB output hdf-filenames:
+        retest = re.compile(
+            ''.join(['(?P<filenamebase>', f, k, b, ')', c, m, '.h5']))
 
         for fname in filenames:
-            # use mode name as folder name: 
-            # TODO: this does not work if run with (run) only!
-            match = findmode_re.match(fname)
-            foldername = match.groups()[-1] + '/'
-            foldername_no_ovl = match.groups()[-1] + '_no_ovl/'
+            # parse the filename to get mode and component(s):
+            m = retest.match(fname)
+            if m is None:
+                # this is strange
+                log.warning('Convert field patterns to png: Could not parse '
+                            'the file name: {0}'.format(fname))
+                continue
+            redict = m.groupdict()
+            datasets = [redict.get('comp', None)]
+            if datasets[0] is None:
+                datasets = ['x', 'y', 'z']
+            datasets = [ds + ri for ri in ['.r', '.i'] for ds in datasets]
+            if redict.get('mode', None) is not None:
+                # use mode name in folder name:
+                mode = redict['mode']
+                foldername = defaults.field_output_folder_prefix + '_' + mode
+            else:
+                mode = ''
+                foldername = defaults.field_output_folder_prefix
+            foldername_no_ovl = foldername + '_no_ovl/'
             if not path.isdir(path.join(self.workingdir, foldername)):
                 log.info("creating subdirectory: " + foldername)
                 mkdir(path.join(self.workingdir, foldername))
@@ -358,15 +386,21 @@ class Simulation(object):
                 # show some progress:
                 print('.', end='')
                 sys.stdout.flush()
-                for comp in ['.r', '.i']:
-                    dct = dict(self.__dict__, 
-                        h5_file=defaults.temporary_h5 + ':' +
-                            defaults.default_field_component_to_export + comp,
+                for dataset in datasets:
+                    # make png file name:
+                    if mode:
+                        png_fname = '.'.join(
+                            [redict['filenamebase'], dataset, mode, 'png'])
+                    else:
+                        png_fname = '.'.join(
+                            [redict['filenamebase'], dataset, 'png'])
+                    dct = dict(
+                        self.__dict__,
+                        h5_file=defaults.temporary_h5 + ':' + dataset,
                         eps_file=defaults.temporary_epsh5,
-                        output_file=foldername + 
-                            fname.rstrip('.h5') + comp + '.png',
-                        output_file_no_ovl=foldername_no_ovl + 
-                            fname.rstrip('.h5') + comp + '.png')
+                        output_file=path.join(foldername, png_fname),
+                        output_file_no_ovl=path.join(
+                            foldername_no_ovl, png_fname))
                     # save mode pattern to png:
                     if self.geometry.is3D:
                         callstr = (defaults.fieldh5topng_call_3D % dct,
@@ -390,9 +424,9 @@ class Simulation(object):
                     # move h5 file to temporary folder:
                     rename(path.join(self.workingdir, fname), 
                            path.join(
-                               self.workingdir, defaults.temporary_h5_folder, fname))
-        # finalize 'progress bar':
-        #print('|')      
+                               self.workingdir,
+                               defaults.temporary_h5_folder,
+                               fname))
         return retcode
     
     def _export_data_helper(self, output_buffer, dataname):
@@ -412,7 +446,7 @@ class Simulation(object):
         pp_file_name = '{0}_{1}.csv'.format(self.jobname, dataname)
         pattern = r'^{0}:, (.+)'.format(dataname.lower())
         output_lines = [
-            x + '\n' for x in findall(pattern, output_buffer, re.MULTILINE)]
+            x + '\n' for x in re.findall(pattern, output_buffer, re.MULTILINE)]
         if output_lines:
             log.info("writing {0} data to {1}".format(dataname, pp_file_name))
             with open(
@@ -427,11 +461,12 @@ class Simulation(object):
         try:
             output_file = open(self.out_file,'r')
         except IOError:
-            # Could not open output file. This is normal if the simulation was
-            # run earlier and now only the postprocessing needs to be done, in
-            # which case self.out_file has a different timestamp in the filename
-            # than the output file from the earlier simulation run, on which the
-            # postprocessing must be done.
+            # Could not open output file. This is normal if the
+            # simulation was run earlier and now only the
+            # postprocessing needs to be done, in which case
+            # self.out_file has a different timestamp in the filename
+            # than the output file from the earlier simulation run, on
+            # which the postprocessing must be done.
             # So just look for the latest .out file in the folder:
             canditates = glob1(self.workingdir, self.jobname + '*.out')
             if len(canditates) > 0:
@@ -498,7 +533,7 @@ class Simulation(object):
         sp.call(call.split(), cwd=self.workingdir)
 
     def draw_bandstructure_2D(
-            self, band, mode=None, filled=True, levels=15, lines=False, 
+            self, band, mode=None, filled=True, levels=15, lines=False,
             labeled=False, legend=False):
         """Draw 2D band contour map of one band"""
         jobname = path.join(self.workingdir, self.jobname)
@@ -514,31 +549,12 @@ class Simulation(object):
                 jobname, mode, self.kspace, band, filled=filled, levels=levels,
                 lines=lines, labeled=labeled, legend=legend)
 
-    def draw_field_patterns(self, title='', only_k_slice=None, show=False):
-        """ Place all field pattern pngs in one diagram and save it to file.
-        If only_k_slice is None (default) all found images at all k vec 
-        numbers will be added. Specify a tuple (from, to) to only include 
-        those (indices into the list of found k-vecs, inclusive).
-        Specify show to also show the figure (script will not block) or
-        show='block' to show and block.
-
-        """
-        for mode in self.modes:
-            dstfile = path.join(self.workingdir, 
-                      self.jobname + '_{0}_patterns'.format(mode))
-            dirname = path.join(self.workingdir, mode)
-            distribute_pattern_images(
-                imgfolder=dirname,  
-                dstfile=[dstfile + ext for ext in ['.pdf', '.png']], 
-                only_k_slice=only_k_slice, 
-                title=title, 
-                show=show)
-
     def draw_bands(
             self, title='', crop_y=True,
             x_axis_hint=defaults.default_x_axis_hint,
             show=False, block=True, save=True):
-        """Plot dispersion relation of all bands calculated along all k vectors.
+        """Plot dispersion relation of all bands calculated along all
+        k vectors.
 
         *x_axis_formatter* is an object with the method
         'apply_to_axis(axis, **kwargs)' which sets the x-axis' tickpositions,
@@ -575,7 +591,7 @@ class Simulation(object):
         other figures.
         If *save* the figure is saved to 'png' and 'pdf' files.
 
-        The band data is loaded from previously saved .csv files, usually 
+        The band data is loaded from previously saved .csv files, usually
         done in post_process().
 
         TODO: add subplots for each file in argument 'comparison_files=[]'
@@ -586,7 +602,7 @@ class Simulation(object):
         plotter = graphics.draw_bands(jobname, self.modes,
                                       x_axis_hint=x_axis_hint,
                                       title=title,
-                                      crop_y=crop_y, 
+                                      crop_y=crop_y,
                                       light_cone=self.geometry.is3D)
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
@@ -607,3 +623,28 @@ class Simulation(object):
         else:
             # I don't want the old figures to show later
             del plotter
+
+    def draw_field_patterns(self, title='', only_k_slice=None, show=False):
+        """ Place all field pattern pngs in one diagram and save it to file.
+        If only_k_slice is None (default) all found images at all k vec
+        numbers will be added. Specify a tuple (from, to) to only include
+        those (indices into the list of found k-vecs, inclusive).
+        Specify show to also show the figure (script will not block) or
+        show='block' to show and block.
+
+        """
+        for mode in self.modes:
+            dstfile_prefix = path.join(
+                self.workingdir, self.jobname + '_patterns')
+            dirname = path.join(
+                self.workingdir,
+                '{0}_{1}'.format(
+                    defaults.field_output_folder_prefix, mode) if mode else
+                    defaults.field_output_folder_prefix
+            )
+            distribute_pattern_images(
+                imgfolder=dirname,
+                dstfile_prefix=dstfile_prefix,
+                only_k_slice=only_k_slice,
+                title=title,
+                show=show)

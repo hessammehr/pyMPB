@@ -129,45 +129,58 @@ def draw_bandstructure_2D(
     plt.show()
 
 def draw_bands(
-        jobname, modes, x_axis_hint=default_x_axis_hint, custom_plotter=None,
-        title='', crop_y=True, light_cone=False):
-    """Plot dispersion relation of all bands calculated along all k vectors.
+        jobname, modes, x_axis_hint=default_x_axis_hint,
+        custom_plotter=None, title='', crop_y=True, light_cone=False):
+    """Plot dispersion relation of all bands calculated along all k
+    vectors.
 
     The band data is loaded from previously saved .csv files.
-    (filenames: [*jobname* + '_' + *mode* + 'freqs.csv' for mode in modes])
+    (filenames: [*jobname* + '_' + *mode* + 'freqs.csv' for mode in
+    modes])
 
-    *x_axis_hint* gives a hint on which kind of ticks and labels should be
-    shown on the x-axis and provides the data needed.
-    *x_axis_hint* can be one of the following:
-    -- integer number: The axis' labels will be the 3D k-vectors. The number
-           denotes the number of major ticks and labels distributed on the axis.
-    -- [integer, format-string]: Same as above, but the labels are formatted
-           with the format-string - this gives the possibility to only show one
-           of the three vector components, e.g. the string "{2}" to only show
-           the k-vector's z-component. The axis title will be inferred from
-           the format-string.
-    -- KSpace object: This must be a KSpace object created with point_labels.
-           These labels usually denote the high symmetry or crititical points,
-           and they will be shown on the axis.
-    -- CustomAxisFormatter object: This gives the possibility to completely
-           customize the x-axis' tick positions, tick labels and axis label.
-           If the CustomAxisFormatter's hover data have not been set, it will
-           be set here with the k-vectors read from the .csv file.
+    *x_axis_hint* gives a hint on which kind of ticks and labels should
+    be shown on the x-axis and provides the data needed. *x_axis_hint*
+    can be one of the following:
+        -- integer number:
+            The axis' labels will be the 3D k-vectors. The number
+            denotes the number of major ticks and labels distributed on
+            the axis.
+        -- [integer, format-string]:
+            Same as above, but the labels are formatted with the
+            format-string - this gives the possibility to only show one
+            of the three vector components, e.g. the string "{2}" to
+            only show the k-vector's z-component. The axis title will be
+            inferred from the format-string.
+        -- KSpace object:
+            This must be a KSpace object created with point_labels.
+            These labels usually denote the high symmetry or crititical
+            points, and they will be shown on the axis.
+        -- CustomAxisFormatter object:
+            This gives the possibility to completely customize the
+            x-axis' tick positions, tick labels and axis label. If the
+            CustomAxisFormatter's hover data have not been set, it will
+            be set here with the k-vectors read from the .csv file.
 
-    If you want to add the graph to an existing figure, supply a BandPlotter
-    with *custom_plotter*, otherwise (default: custom_plotter=None) a new
-    BandPlotter is created and returned.
+    If you want to add the graph to an existing figure, supply a
+    BandPlotter with *custom_plotter*, otherwise (default:
+    custom_plotter=None) a new BandPlotter is created and returned.
 
     *title* is the subplot's title.
 
-    If *crop_y* is true (default), the y-axis (frequency) will be limited
-    so that only frequency values are shown where all bands are known.
-    Alternatively, a numeric value of *crop_y* denotes the upper frequency
-    value where the plot will be cropped.
+    If *crop_y* is true (default), the y-axis (frequency) will be
+    limited so that only frequency values are shown where all bands are
+    known. Alternatively, a numeric value of *crop_y* denotes the upper
+    frequency value where the plot will be cropped.
 
-    If *light_cone*, add a light cone and crop the bandgaps at the light line.
+    If *light_cone*, add a light cone and crop the bandgaps at the light
+    line.
 
     """
+
+    # TODO add argument color_by_parity=True, read parity data from files and
+    # color the plot lines accordingly.
+
+
     if custom_plotter is None:
         plotter = BandPlotter()
     else:
@@ -210,6 +223,32 @@ def draw_bands(
         # add hover data:
         if x_axis_formatter._hover_func_is_default:
             x_axis_formatter.set_hover_data(data[:, 1:4])
+
+        ''' work in progress... #TODO color by parity
+        if color_by_parity:
+            # try to load parity files:
+            fname = '{0}_{1}yparity.csv'.format(jobname, mode)
+            try:
+                yparities = loadtxt(fname, delimiter=',')
+            except IOError:
+                yparities = None
+            #print(fname, yparities)
+            fname = '{0}_{1}zparity.csv'.format(jobname, mode)
+            try:
+                zparities = loadtxt(fname, delimiter=',')
+            except IOError:
+                zparities = None
+            #print(fname, zparities)
+            # cannot simply color the individual points in a plt.plot.
+            # 2 Alternatives:
+            # - superimpose a scatter plot (where each point can be
+            #   individually colored)
+            # - or split band data into 5 categories:
+            # (oddz, evenz) x (oddy, eveny) + (everything else)
+            # each category has in general multiple sets of connected data
+            # points, draw each set with plt.plot in the category's color
+
+        ...end : work in progress'''
 
         plotter.plot_bands(
             data[:, 5:], data[:, 1:5],

@@ -31,8 +31,10 @@ default_initcode = (';load module for calculating local dos:\n'
 default_postcode = ''
 default_runcode = '(run-tm)'
 
-default_number_of_tiles_to_output = 3
-default_field_component_to_export = 'z'
+number_of_tiles_to_output = 3
+# Field patterns transformed to PNG will be placed in subfolders named
+# (field_output_folder_prefix + '_' + mode):
+field_output_folder_prefix = 'pngs'
 
 # poi: k-points of interest:
 default_band_func_tm = lambda poi : (
@@ -53,8 +55,10 @@ default_band_func_te = lambda poi : (
 #mpb_call = 'mpb'
 mpb_call = 'mpirun -np %(num_procs)s mpbi-mpi'
 
-mpbdata_call = ('mpb-data -T -rn%(resolution)s -x%(number_of_tiles_to_output)s '
-                '-y%(number_of_tiles_to_output)s -o%(output_file)s '
+mpbdata_call = ('mpb-data -T -rn%(resolution)s '
+                '-x%(number_of_tiles_to_output)s '
+                '-y%(number_of_tiles_to_output)s '
+                '-o%(output_file)s '
                 '%(h5_file)s')
 epsh5topng_call_2D = 'h5topng -S3 -Zrcbluered -oepsilon.png %(h5_file)s'
 epsh5topng_call_3D = 'h5topng -0z0 -S3 -Zrcbluered -oepsilon.png %(h5_file)s'
@@ -123,11 +127,12 @@ default_gaptext='gap size: {0:.2f}%'
 default_x_axis_hint = 4 # 4 equally spaced ticks, labeled with k-vector
 default_y_axis_label = r'frequency $\omega a/2\pi c$'
 default_x_axis_label = 'wave vector {0}'
-# the x_axis_label used when showing high symmetry point labels on the k axis:
-# Note: I am not entirely satisfied with this title. How do you really call it?
-# 'Brilluoin zone symmetry points'? 'Wave vector direction'? (this last one is
-# good, but we also see the magnitude, when e.g. going from Gamma to M etc.)
-# 'Wave vector point in brilluoin zone'? (too long)
+# the x_axis_label used when showing high symmetry point labels on the k
+# axis: Note: I am not entirely satisfied with this title. How do you
+# really call it? 'Brilluoin zone symmetry points'? 'Wave vector
+# direction'? (this last one is good, but we also see the magnitude,
+# when e.g. going from Gamma to M etc.) 'Wave vector point in brilluoin
+# zone'? (too long)
 default_kspace_axis_label = 'wave vector k point'
 
 default_kvecformatter_format_str = '({0:.2f}, {1:.2f}, {2:.2f})'
@@ -175,7 +180,9 @@ def default_onclick(event, bandplotter):
     #fig = plt.figure('mode pattern', figsize=(6, 2))
     #ax = fig.add_subplot(111) #put mode pattern image here
 
-contour_lines = {'colors':'k','linestyles':['dashed','solid'], 'linewidths':1.0}
+contour_lines = {'colors':'k',
+                 'linestyles':['dashed','solid'],
+                 'linewidths':1.0}
 contour_plain = {'linewidths':1.0}
 contour_filled = {}
 colorbar_style = {'extend':'both','shrink':0.8}

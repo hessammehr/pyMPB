@@ -1,19 +1,25 @@
-    #Copyright 2009-2016 Seyed Hessam Moosavi Mehr, Juergen Probst
-    #This program is free software; you can redistribute it and/or modify
-    #it under the terms of the GNU General Public License as published by
-    #the Free Software Foundation; either version 3 of the License, or
-    #(at your option) any later version.
-
-    #This program is distributed in the hope that it will be useful,
-    #but WITHOUT ANY WARRANTY; without even the implied warranty of
-    #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    #GNU General Public License for more details.
-
-    #You should have received a copy of the GNU General Public License
-    #along with this program. If not, see <http://www.gnu.org/licenses/>.
+# -*- coding:utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright 2016 Juergen Probst; Copyright 2009 Seyed Hessam Moosavi Mehr
+#
+# This file is part of pyMPB.
+#
+# pyMPB is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# pyMPB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with pyMPB.  If not, see <http://www.gnu.org/licenses/>.
+# ----------------------------------------------------------------------
 
 from __future__ import division
-from math import sqrt, pi, sin, cos, ceil
+from math import sqrt, pi, sin, cos
 from geometry import Geometry
 from objects import Rod
 from copy import copy
@@ -22,35 +28,46 @@ from glob import glob1
 import re
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import numpy as np
-from fractions import Fraction
 
 import log
 
-def occupancy_radius(occupancy,n,cell_area = 1.0):
+
+def occupancy_radius(occupancy, n, cell_area=1.0):
     return sqrt(cell_area*occupancy/n/pi)
 
-def wheel(width,height,n,occupancy,separation,material,priority='None'):
-    '''Produces a geometry consisting of n rods of specified material
+
+def wheel(width, height, n, occupancy, separation, material, priority='None'):
+    """Produces a geometry consisting of n rods of specified material
     with specified cell occupancy in a cell of default area = 1.
     The distance between the center of the cell and the body of each
-    rod is adjustable using separation.'''
-    distance = lambda point1,point2 : sqrt((point1[0]-point2[0])**2+\
-    (point1[1]-point2[1])**2)
-    r = occupancy_radius(occupancy,n,width*height)
-    if n==1 : return Geometry(width,height,[Rod(0,0,material,r)])
+    rod is adjustable using separation.
+    """
+    distance = lambda point1, point2: \
+        sqrt((point1[0]-point2[0])**2 + (point1[1]-point2[1])**2)
+    r = occupancy_radius(occupancy, n, width * height)
+    if n == 1:
+        return Geometry(width, height, [Rod(0, 0, material, r)])
     R = r + separation
-    wheel_point = lambda N : (R*cos(N*2*pi/n),R*sin(N*2*pi/n))
-    wheel_priority = {\
-    'None':lambda R,r,n:(R,r,n)\
-    ,'Occupancy':lambda R,r,n:(distance(wheel_point(0),wheel_point(1))>2*r\
-    and (R,r,n) or (r/sin(2*pi/(2*n)),r,n))\
-    ,'Distance':lambda R,r,n:(distance(wheel_point(0),wheel_point(1))>2*r\
-    and (R,r,n) or (R,R*sin(2*pi/(2*n)),n))\
+    wheel_point = lambda N: (R*cos(N*2*pi/n), R*sin(N*2*pi/n))
+    wheel_priority = {
+        'None': lambda R, r, n: (R, r, n),
+        'Occupancy': lambda R, r, n: (
+            distance(wheel_point(0), wheel_point(1)) > 2 * r and
+            (R, r, n) or (r/sin(2*pi/(2*n)), r, n)),
+        'Distance': lambda R, r, n: (
+            distance(wheel_point(0), wheel_point(1)) > 2 * r and
+            (R, r, n) or (R, R*sin(2*pi/(2*n)), n))
     }
-    R,r,n = wheel_priority[priority](R,r,n)
-    return Geometry(width,height,[Rod(*wheel_point(N),material=\
-    copy(material),radius=r) for N in range(n)])
+    R, r, n = wheel_priority[priority](R, r, n)
+    return Geometry(
+        width,
+        height,
+        [Rod(
+            *wheel_point(N),
+            material=copy(material),
+            radius=r)
+         for N in range(n)])
+
 
 def max_epsilon(geometry, anisotropic_component=0):
     return max(
@@ -59,11 +76,12 @@ def max_epsilon(geometry, anisotropic_component=0):
         else obj.material.epsilon 
         for obj in geometry.objects)
 
+
 def get_intersection_freq(freq_left1, freq_right1, freq_left2, freq_right2):
-    """Based on two lines, line1 from (n, freq_left1) to (n+1, freq_right1) and 
-    line2 from (n, freq_left2) to (n+1, freq_right2), return the frequency 
-    (y-value) where they intersect. It is not checked whether they intersect,
-    so please take care of that.
+    """Based on two lines, line1 from (n, freq_left1) to (n+1, freq_right1)
+    and line2 from (n, freq_left2) to (n+1, freq_right2), return the
+    frequency (y-value) where they intersect. It is not checked whether
+    they intersect, so please take care of that.
 
     """
     '''y1 = m * x1 + x0
@@ -83,6 +101,7 @@ def get_intersection_freq(freq_left1, freq_right1, freq_left2, freq_right2):
     return ((freq_right2*freq_left1 - freq_right1*freq_left2) / 
             (freq_right2-freq_left2-freq_right1+freq_left1))
 
+
 def get_intersection_knum(freq_left, freq_right, freq_intersection):
     """Based on two lines, line1 from (0, freq_left) to (1, freq_right) and 
     a horizontal line at freq_intersection, return the knum (x-value) where 
@@ -92,8 +111,9 @@ def get_intersection_knum(freq_left, freq_right, freq_intersection):
     don't forget to add the left knum to the result.
 
     """
-    #freq_intersection = (freq_right - freq_left) * xi + freq_left
+    # freq_intersection = (freq_right - freq_left) * xi + freq_left
     return (freq_intersection - freq_left) / (freq_right - freq_left)
+
 
 def get_gap_bands(
         banddata, threshold=5e-4, light_line=None):
@@ -165,6 +185,7 @@ def get_gap_bands(
             width = 2 * (hi - lo) / (hi + lo)
             bands.append((bandnum, lo, hi, width))
     return bands
+
     
 def strip_format_spec(format_str):
     """Remove all format-specifications from the format-string.
@@ -208,18 +229,25 @@ def strip_format_spec(format_str):
 
 
 def distribute_pattern_images(
-        imgfolder, dstfile, borderpixel=5, only_k_slice=None, 
-        title='', show=False):
-    """ Read all pngs (from MPB simulation) from imgfolder and distribute
-    them according to bandnumber and k vector number in the file(s) dstfile.
-    The filenames must be in a format like h.k55.b06.z.zeven.r.png, where
-    the order does not matter, but k## and b## must be given.
-    borderpixel is the number of pixels that the border around
-    the images will take up. (between r and i parts; border between bands and 
-    kvecs will take up 3*borderpixel)
-    If only_k_slice is None (default) all found images at all k vec numbers
-    will be added. Specify a tuple (from, to) to only include those (indices
-    into the list of found k-vecs, inclusive).
+        imgfolder, dstfile_prefix, dstfile_type='png', borderpixel=5,
+        only_k_slice=None, title='', show=False):
+    """Read all pngs (from MPB simulation) from *imgfolder* and distribute
+    them according to bandnumber and k vector number.
+
+    The filenames must be in a format like h.k55.b06.z.r.zeven.png,
+    where the mode is optional. The field (here: 'h'), direction (here:
+    '.z') and mode (here: '.zeven') will be added to *dstfile_prefix* to
+    make up the destination file name (with extension '.' +
+    *dstfile_type*)
+
+    *borderpixel* is the number of pixels that the border around the
+    images will take up. (between r and i parts; border between bands
+    and kvecs will take up 3*borderpixel)
+
+    If *only_k_slice* is None (default) all found images at all k-vec
+    numbers will be added. Specify a tuple (from, to) to only include
+    those (indices into the list of found k-vecs, inclusive).
+
     """
     if not path.isdir(imgfolder):
         return 0
@@ -227,208 +255,242 @@ def distribute_pattern_images(
     filenames = glob1(imgfolder, "*[edh].*.png")
     if not filenames:
         return 0
-    
-    log.info("saving field patterns to file(s): %s" % dstfile)
-    
-    # all files should have same field component, direction and mode,
-    # so just read them representatively from first filename:
-    first = filenames[0]
-    parts = first.split('.')
-    reparts = parts[:]
-    klabel = [] # the parts of label format of x-axis in plot
-    # find where knums and bandnums are in filenames:
-    # NOTE: there might be a sophisticated way to do this very nice and short
-    # with re.sub (incl. the counting of the number length), but no time to 
-    # find out right now.
-    btest = re.compile('^b(\d+)$')
-    ktest = re.compile('^k(\d+)$')
-    irtest = re.compile('^[ri]$')
-    tests = [btest, ktest, irtest]
-    for i, part in enumerate(parts):
-        results = [t.match(part) for t in tests]
-        if results[0]:
-            # found part with band number
-            parts[i] = 'b{bandnum:0%id}' % len(results[0].groups()[0])
-            reparts[i] = 'b(?P<bandnum>\d+)'
-        elif results[1]:
-            # found part with kvec number
-            parts[i] = 'k{knum:0%id}' % len(results[1].groups()[0])
-            reparts[i] = 'k(?P<knum>\d+)'
-            klabel.append(parts[i])
-        elif results[2]:
-            # found part with r or i (real or imaginary part)
-            parts[i] = '{ri}'
-            reparts[i] = '(?P<ri>[ri])'
-            klabel.append(parts[i])
-        
-    fname_base = path.join(imgfolder, '.'.join(parts))
-    retest = re.compile('.'.join(reparts))
-    
-    # now get the numbers of bands and kvecs by looking at all files:
-    knums = set()
-    bnums = set()
-    ri = set()    
 
+    # Build the regular expression pattern for parsing file names:
+
+    # re that matches the field (e, d or h):
+    f = r'(?P<field>[edh])'
+    # re that matches the k number part, starting with '.':
+    k = r'[.]k(?P<knum>\d+)'
+    # re that matches the band number part, starting with '.':
+    b = r'[.]b(?P<bandnum>\d+)'
+    # re that matches the field component (.x, .y or .z):
+    c = r'[.](?P<comp>[xyz])'
+    # re that matches real/imaginary part (.r or .i):
+    r = r'[.](?P<ri>[ri])'
+    # re that matches anything following '.', which does not contain
+    # another period (this should be the mode: te, tm, zodd etc.):
+    m = r'(:?[.](?P<mode>[^.]+))?'
+    # The final re pattern matches field pattern PNG file names:
+    retest = re.compile(
+        ''.join([f, k, b, c, r, m, '.png']))
+
+    # Analyze files in folder and make dictionary with data for each
+    # destination file:
+    dst_dict = dict()
     for fname in filenames:
         m = retest.match(fname)
-        if not m:
-            # no match found, maybe some wrong stray file. Warn and ignore:
-            log.warning('Warning in distribute_pattern_images: ' \
-                  'found non-matching file:', fname, 'in', imgfolder)
+        if m is None:
+            # found png file with unknown format
+            log.warning('Distribute field pattern images: Could not '
+                        'parse the file name: {0}'.format(fname))
             continue
-        d = m.groupdict()
-        knums.add(int(d['knum']))
-        bnums.add(int(d['bandnum']))
-        ri.add(d['ri'])
-        
-    # change sets to sorted lists:
-    knums = sorted(knums)
-    if only_k_slice is not None:
-        knums = knums[only_k_slice[0]:only_k_slice[1] + 1]
-    bnums = sorted(bnums)
-    ri = sorted(ri, reverse=True) # reverse, because I want real part first
-    
-    nc = len(ri)
-    
-    # read img size from first, all images should be the same!   
-    img=mpimg.imread(path.join(imgfolder, first))
-    imgsize = (img.shape[1], img.shape[0])
-    img_aspect = imgsize[1] / imgsize[0]
-
-    # calc pixelsize in data units:
-    # I want to force the individual pngs into areas of 1x1 data units,
-    # including a half-border around the pngs. That way, the pngs will be
-    # placed at integer values of the axes.
-    # Because the pngs are generally not rectangular, we will have a different
-    # pixelsize in x and y.
-
-    # border belonging to one png in x: (0.5 + 1.5) * bordersize:
-    pixelsize_x = 1.0 / (imgsize[0] + 2 * borderpixel)
-    # border belonging to one png in y: (1.5 + 1.5) * bordersize:
-    pixelsize_y = 1.0 / (imgsize[1] + 3 * borderpixel)
-    #print 'pixel sizes (in data space)', pixelsize_x, pixelsize_y
-    
-    # the aspect ratio for the subplot so the pixels turn out rectangular:
-    ax_aspect = pixelsize_x / pixelsize_y
-    
-    # calc extents of the indivdual pngs:
-    # These values are given in data units. They denote the distance between
-    # an integer value of an axis (near png center) to where the boundaries
-    # of the pngs will be placed in data space, thereby stretching/shrinking
-    # the pngs and leaving an empty border between adjacent pngs. 
-    ext_thin_border_x = 0.5 - 0.5 * pixelsize_x * borderpixel
-    ext_thick_border_x = 0.5 - 1.5 * pixelsize_x * borderpixel
-    ext_border_y = 0.5 - 1.5 * pixelsize_y * borderpixel
-    
-    # size in data units:
-    w_dataunits = len(knums) * nc
-    h_dataunits = len(bnums)
-    
-    # now we have all data, so start plotting:
-    fig = plt.figure(num=imgfolder, 
-                     figsize=(2 * w_dataunits, 2 * h_dataunits))
-                     # note: do not play with dpi here, it does not change 
-                     # the point size for fonts, so the graphics sizes change
-                     # while label sizes stay constant!
-    ax = fig.add_subplot(111, axisbg='0.5', aspect=ax_aspect)
-
-    for ib, bandnum in enumerate(bnums):
-        for ik, knum in enumerate(knums):
-            for ic, comp in enumerate(ri):
-                fname = fname_base.format(
-                    bandnum=bandnum, knum=knum, ri=comp)
-                if not path.isfile(fname):
-                    log.warning( 'Warning in distribute_pattern_images: ' \
-                          'could not find file:', fname)
-                    continue
-                x0 = ik * nc + ic
-                xl = x0 - ext_thin_border_x if ic else x0 - ext_thick_border_x
-                xr = x0 + ext_thick_border_x if ic else x0 + ext_thin_border_x
-                y0 = 1 + ib
-                img=mpimg.imread(fname)
-                ax.imshow(
-                    img, 
-                    origin='upper', 
-                    extent=(xl, xr, y0 - ext_border_y, y0 + ext_border_y),
-                    interpolation='none')
-                    
-    # set aspect; must be done after ax.imshow, as the latter changes it:               
-    ax.set_aspect(ax_aspect)
-    
-    # set ticks, labels etc.:
-    kform = '.'.join(klabel)
-    xticks = [kform.format(knum=k, ri=c) for k in knums for c in ri]
-    ax.set_xticks(range(len(xticks)))
-    ax.set_xticklabels(xticks, rotation=45)
-    ax.tick_params(which='both', direction='out', length=2)
-    ax.set_xlabel('Wave vector index', size='x-large')
-    ax.set_ylabel('Band number', size='x-large')
-    if title:
-        ax.set_title(title, size='x-large')
-        
-    # choose proper data region:
-    # ax.autoscale_view(tight=True)  
-    ax.set_xlim(-0.5, w_dataunits - 0.5)
-    ax.set_ylim(0.5, 0.5 + h_dataunits)
-    
-    # width of single png in data units:
-    w_png_dataunits = imgsize[0] * pixelsize_x 
-    h_png_dataunits = imgsize[1] * pixelsize_y 
-    #print 'size of png in data units:', w_png_dataunits, h_png_dataunits
-    
-    # read here about transformations: 
-    # http://matplotlib.org/users/transforms_tutorial.html
-    
-    # transform sizes in (axis') data units to pixels:
-    w_png_currentpixels, h_png_currentpixels = (
-        ax.transData.transform([w_png_dataunits, h_png_dataunits]) - 
-        ax.transData.transform((0,0)))
-    #print 'size of png transformed to pixel:', w_png_currentpixels, \
-    #                                           h_png_currentpixels
-    
-    # transformation to transform pixel sizes to figure units:
-    # i.e., what percentage of the whole figure takes up a single png?
-    pixel_to_figcoords = fig.transFigure.inverted()    
-    w_png_figunits, h_png_figunits = pixel_to_figcoords.transform(
-        (w_png_currentpixels, h_png_currentpixels))
-    #print 'size of png in figure units:', w_png_figunits, h_png_figunits    
-    
-    # how many pixels should the whole figure contain, so that the individual
-    # pngs have their original resolution?
-    w_fig_pixel = imgsize[0] / w_png_figunits
-    h_fig_pixel = imgsize[1] / h_png_figunits
-    # print 'goal size of whole figure in pixel:', w_fig_pixel, h_fig_pixel
-    
-    # current size of figure in inches:    
-    wfig, hfig = fig.get_size_inches()
-
-    # figure dpi, so that resulting pixel size is same than original images:
-    wdpi = w_fig_pixel / wfig
-    hdpi = h_fig_pixel / hfig
-    #print 'dpi to save figure:', wdpi, hdpi
-    # note: I used here that 1 figure unit is 1 inch, but this is not correct
-    # since I needed to keep the aspect ratio of the individual images while
-    # I forced them (with extent parameter in imshow) on areas of approx. 1x1
-    # figure units. Matplotlib then scales everything so it fits, leading to 
-    # different x and y DPIs. I believe the biggest DPI is correct, because
-    # the smaller axis (smaller figure width in figure units than is actually
-    # returned by get_size_inches) will just be padded in the image, leading
-    # to a smaller DPI as calculated above.
-    dpi = max(wdpi, hdpi); 
-    
-    if isinstance(dstfile, (list, tuple)):
-        for dstfname in dstfile:
-            fig.savefig(dstfname, dpi=dpi, bbox_inches='tight', pad_inches=0)
-    else:
-        fig.savefig(dstfile, dpi=dpi, bbox_inches='tight', pad_inches=0)
-    
-    if show:
-        if show == 'block':
-            plt.show(block=True)
+        redict = m.groupdict()
+        field = redict['field']
+        comp = redict['comp']
+        mode = redict.get('mode', '')
+        if mode:
+            dstfile = '.'.join(
+                [dstfile_prefix, field, comp, mode, dstfile_type])
         else:
-            plt.show(block=False)
-    else:
-        del fig
+            dstfile = '.'.join(
+                [dstfile_prefix, field, comp, dstfile_type])
+        if dstfile not in dst_dict:
+            axtitle = '${0}_{1}$ field pattern{2}'.format(
+                field.upper(),
+                comp,
+                ', {0} mode'.format(mode) if mode else '')
+            # dst_dict is a dictionary which keys are the unique
+            # destination file names. The values are lists. The first
+            # four items in these lists are a set of band numbers, a
+            # set of k-vectors and a set of complex components (.r
+            # and/or .i) occurring in the png file names and the
+            # (second) title that will be printed below the major title.
+            # Additional items in the value-lists are tuples, one for
+            # each png file going to the destination file. The tuple
+            # items are the png-file name, the band number, the k-vector
+            # index and ['r' or 'i'] for the real or imaginary part.
+            dst_dict[dstfile] = [set(), set(), set(), axtitle]
+
+        bandnum = int(redict['bandnum'])
+        knum = int(redict['knum'])
+        ri = redict['ri']
+
+        # append to the sets of knum and ri of all png files going
+        # to dstfile:
+        dst_dict[dstfile][0].add(bandnum)
+        dst_dict[dstfile][1].add(knum)
+        dst_dict[dstfile][2].add(ri)
+        # append a tuple for this png file
+        dst_dict[dstfile].append((fname, bandnum, knum, ri))
+
+    # now, for each destination file, make a figure and distribute the
+    # pngs belonging there:
+    for dstfile_name, dst_list in dst_dict.iteritems():
+        log.info('Distributing following field patterns to'
+                 ' file {0}:'.format(dstfile_name))
+        log.info(', '.join([tpl[0] for tpl in dst_list[4:]]))
+
+        # convert sets to sorted lists:
+        bnums = sorted(dst_list[0])
+        knums = sorted(dst_list[1])
+        if only_k_slice is not None:
+            knums = knums[only_k_slice[0]:only_k_slice[1] + 1]
+        bnums = sorted(bnums)
+        # reverse, because I want real part first:
+        ris = sorted(dst_list[2], reverse=True)
+        num_cmplx_comps = len(ris)
+
+        axtitle = dst_list[3]
+
+        # prepare the figure:
+
+        # read img size from first file, all images should be the same!
+        img = mpimg.imread(path.join(imgfolder, dst_list[4][0]))
+        imgsize = (img.shape[1], img.shape[0])
+        # img_aspect = imgsize[1] / imgsize[0]
+
+        # calc pixelsize in data units: I want to force the individual
+        # pngs into areas of 1x1 data units, including a half-border
+        # around the pngs. That way, the pngs will be placed at integer
+        # values of the axes. Because the pngs are generally not
+        # rectangular, we will have a different pixelsize in x and y.
+
+        # border belonging to one png in x: (0.5 + 1.5) * bordersize:
+        pixelsize_x = 1.0 / (imgsize[0] + 2 * borderpixel)
+        # border belonging to one png in y: (1.5 + 1.5) * bordersize:
+        pixelsize_y = 1.0 / (imgsize[1] + 3 * borderpixel)
+        # print 'pixel sizes (in data space)', pixelsize_x, pixelsize_y
+
+        # the aspect ratio for the subplot so the pixels turn out
+        # rectangular:
+        ax_aspect = pixelsize_x / pixelsize_y
+
+        # calc extents of the indivdual pngs: These values are given in
+        # data units. They denote the distance between an integer value
+        # of an axis (near png center) to where the boundaries of the
+        # pngs will be placed in data space, thereby
+        # stretching/shrinking the pngs and leaving an empty border
+        # between adjacent pngs.
+        ext_thin_border_x = 0.5 - 0.5 * pixelsize_x * borderpixel
+        ext_thick_border_x = 0.5 - 1.5 * pixelsize_x * borderpixel
+        ext_border_y = 0.5 - 1.5 * pixelsize_y * borderpixel
+
+        # size in data units:
+        w_dataunits = len(knums) * num_cmplx_comps
+        h_dataunits = len(bnums)
+
+        # now we have all data, so start plotting
+
+        fig = plt.figure(
+            figsize=(2 * w_dataunits, 2 * h_dataunits)
+            # note: do not play with dpi here, it does not change
+            # the point size for fonts, so the graphics sizes change
+            # while label sizes stay constant!
+        )
+        ax = fig.add_subplot(111, axisbg='0.5', aspect=ax_aspect)
+
+        # now, we can place each image on the subplot:
+        for src_tuple in dst_list[4:]:
+            fname = path.join(imgfolder, src_tuple[0])
+            bandnum = src_tuple[1]
+            knum = src_tuple[2]
+            ri = src_tuple[3]
+
+            # where must the image go?
+            try:
+                ic = ris.index(ri)
+                x0 = knums.index(knum) * num_cmplx_comps + ic
+                y0 = 1 + bnums.index(bandnum)
+            except ValueError:
+                # kvec was excluded from distribution
+                continue
+            xl = x0 - ext_thin_border_x if ic else x0 - ext_thick_border_x
+            xr = x0 + ext_thick_border_x if ic else x0 + ext_thin_border_x
+            img = mpimg.imread(fname)
+            ax.imshow(
+                img,
+                origin='upper',
+                extent=(xl, xr, y0 - ext_border_y, y0 + ext_border_y),
+                interpolation='none')
+
+        # set aspect; must be done after ax.imshow, as the latter changes it:
+        ax.set_aspect(ax_aspect)
+
+        # set ticks, labels etc.:
+        klabelform = 'k{knum}.{ri}'
+        xticks = [klabelform.format(knum=k, ri=c) for k in knums for c in ris]
+        ax.set_xticks(range(len(xticks)))
+        ax.set_xticklabels(xticks, rotation=45)
+        ax.tick_params(which='both', direction='out', length=2)
+        ax.set_xlabel('Wave vector index', size='x-large')
+        ax.set_ylabel('Band number', size='x-large')
+        if title:
+            fig.suptitle(title, size='x-large')
+            ax.set_title(axtitle, size='large')
+
+        # choose proper data region:
+        # ax.autoscale_view(tight=True)
+        ax.set_xlim(-0.5, w_dataunits - 0.5)
+        ax.set_ylim(0.5, 0.5 + h_dataunits)
+
+        # width of single png in data units:
+        w_png_dataunits = imgsize[0] * pixelsize_x
+        h_png_dataunits = imgsize[1] * pixelsize_y
+        # print 'size of png in data units:', w_png_dataunits, h_png_dataunits
+
+        # read here about transformations:
+        # http://matplotlib.org/users/transforms_tutorial.html
+
+        # transform sizes in (axis') data units to pixels:
+        w_png_currentpixels, h_png_currentpixels = (
+            ax.transData.transform([w_png_dataunits, h_png_dataunits]) -
+            ax.transData.transform((0, 0)))
+        # print 'size of png transformed to pixel:', w_png_currentpixels, \
+        #                                            h_png_currentpixels
+
+        # transformation to transform pixel sizes to figure units: i.e.,
+        # what percentage of the whole figure takes up a single png?
+        pixel_to_figcoords = fig.transFigure.inverted()
+        w_png_figunits, h_png_figunits = pixel_to_figcoords.transform(
+            (w_png_currentpixels, h_png_currentpixels))
+        # print 'size of png in figure units:', w_png_figunits, h_png_figunits
+
+        # how many pixels should the whole figure contain, so that the
+        # individual pngs have their original resolution?
+        w_fig_pixel = imgsize[0] / w_png_figunits
+        h_fig_pixel = imgsize[1] / h_png_figunits
+        # print 'goal size of whole figure in pixel:', w_fig_pixel, h_fig_pixel
+
+        # current size of figure in inches:
+        wfig, hfig = fig.get_size_inches()
+
+        # figure dpi, so that resulting pixel size is same than original
+        # images:
+        wdpi = w_fig_pixel / wfig
+        hdpi = h_fig_pixel / hfig
+        # print 'dpi to save figure:', wdpi, hdpi
+        # note: I used here that 1 figure unit is 1 inch, but this is
+        # not correct since I needed to keep the aspect ratio of the
+        # individual images while I forced them (with extent parameter
+        # in imshow) on areas of approx. 1x1 figure units. Matplotlib
+        # then scales everything so it fits, leading to different x and
+        # y DPIs. I believe the biggest DPI is correct, because the
+        # smaller axis (smaller figure width in figure units than is
+        # actually returned by get_size_inches) will just be padded in
+        # the image, leading to a smaller DPI as calculated above.
+        dpi = max(wdpi, hdpi)
+
+        fig.savefig(dstfile_name, dpi=dpi, bbox_inches='tight', pad_inches=0)
+
+        if show:
+            if show == 'block':
+                plt.show(block=True)
+            else:
+                plt.show(block=False)
+        else:
+            del fig
+
 
 def do_runmode(
         sim, runmode, num_processors, bands_plot_title, plot_crop_y,
@@ -437,7 +499,9 @@ def do_runmode(
 
     Keyword arguments:
 
-    runmode -- can be one of the following:
+    sim              -- the Simulation object
+
+    runmode          -- can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : just write the ctl file to disk
         'sim'    : run the simulation and do all postprocessing
@@ -493,15 +557,15 @@ def do_runmode(
     if not isinstance(runmode, str):
         return sim
 
-    if runmode.startswith('c'): # create ctl file
+    if runmode.startswith('c'):  # create ctl file
         sim.write_ctl_file(sim.workingdir)
-    elif runmode.startswith('s'): # run simulation
+    elif runmode.startswith('s'):  # run simulation
         error = sim.run_simulation(num_processors=num_processors)
         if error:
             return False
         # now continue with postprocessing:
-        runmode='postpc'
-    if runmode.startswith('p'): # postprocess
+        runmode = 'postpc'
+    if runmode.startswith('p'):  # postprocess
         # create csv files of data and pngs:
         sim.post_process(convert_field_patterns=convert_field_patterns)
         # save band diagram as pdf&png:
@@ -513,7 +577,7 @@ def do_runmode(
             sim.draw_field_patterns(
                 title=bands_plot_title,
                 only_k_slice=field_pattern_plot_k_slice)
-    elif runmode.startswith('d'): # display pngs
+    elif runmode.startswith('d'):  # display pngs
         # display png of epsilon:
         sim.display_epsilon()
         # save and show mode patterns in pdf:
