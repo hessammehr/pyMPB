@@ -53,7 +53,7 @@ default_band_func_te = lambda poi : (
 
 
 #mpb_call = 'mpb'
-mpb_call = 'mpirun -np %(num_procs)s mpbi-mpi'
+mpb_call = 'mpirun -np %(num_procs)s mpb-mpi'
 
 mpbdata_call = ('mpb-data -T -rn%(resolution)s '
                 '-x%(number_of_tiles_to_output)s '
@@ -62,7 +62,7 @@ mpbdata_call = ('mpb-data -T -rn%(resolution)s '
                 '%(h5_file)s')
 epsh5topng_call_2D = 'h5topng -S3 -Zrcbluered -oepsilon.png %(h5_file)s'
 epsh5topng_call_3D = 'h5topng -0z0 -S3 -Zrcbluered -oepsilon.png %(h5_file)s'
-epsh5topng_call_3D_cross_sect = ('h5topng -0x0 -S3 -Zrcbluered ' 
+epsh5topng_call_3D_cross_sect = ('h5topng -0x0 -S3 -Zrcbluered '
                               '-oepsilonslab.png %(h5_file)s')
 
 fieldh5topng_call_2D = ('h5topng -S3 -Zcbluered -C%(eps_file)s '

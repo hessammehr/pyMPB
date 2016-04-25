@@ -244,9 +244,12 @@ def distribute_pattern_images(
     images will take up. (between r and i parts; border between bands
     and kvecs will take up 3*borderpixel)
 
-    If *only_k_slice* is None (default) all found images at all k-vec
-    numbers will be added. Specify a tuple (from, to) to only include
-    those (indices into the list of found k-vecs, inclusive).
+    Specify *only_k_slice* to limit the k-vecs to be included in the
+    field pattern diagram. *only_k_slice* is a tuple with starting and
+    ending (inclusive) index of the k-vectors where the patterns were
+    exported during simulation, e.g. (0, 2) for the first, second and
+    third exported k-vector. If it is None (default), all k-vectors
+    where field patterns were exported will be added to the diagram.
 
     """
     if not path.isdir(imgfolder):
@@ -326,10 +329,7 @@ def distribute_pattern_images(
 
     # now, for each destination file, make a figure and distribute the
     # pngs belonging there:
-    for dstfile_name, dst_list in dst_dict.iteritems():
-        log.info('Distributing following field patterns to'
-                 ' file {0}:'.format(dstfile_name))
-        log.info(', '.join([tpl[0] for tpl in dst_list[4:]]))
+    for dstfile_name, dst_list in dst_dict.items():
 
         # convert sets to sorted lists:
         bnums = sorted(dst_list[0])
@@ -342,6 +342,11 @@ def distribute_pattern_images(
         num_cmplx_comps = len(ris)
 
         axtitle = dst_list[3]
+
+        log.info('Distributing following field patterns to'
+                 ' file {0}:'.format(dstfile_name))
+        log.info(', '.join(
+            [tpl[0] for tpl in dst_list[4:] if tpl[2] in knums]))
 
         # prepare the figure:
 

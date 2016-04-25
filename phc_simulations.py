@@ -50,8 +50,6 @@ def TriHoles2D(
     of the bands diagram.
 
     """
-    #global geom # for debugging
-
     mat = Dielectric(material)    
 
     geom = Geometry(
@@ -133,9 +131,7 @@ def TriHolesSlab3D(
     of the bands diagram.
 
     """
-    #global geom # for debugging
-
-    mat = Dielectric(material)    
+    mat = Dielectric(material)
 
     geom = Geometry(
         width=1,

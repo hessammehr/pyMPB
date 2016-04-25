@@ -204,12 +204,22 @@ def draw_bands(
         except TypeError:
             # no sequence
             hintlen = 0
+            try:
+                # is this a number?
+                num = int(x_axis_hint)
+            except ValueError:
+                # no number
+                num = 0
         if hintlen > 1 and (isinstance(x_axis_hint[0], int) and
                 hasattr(x_axis_hint[1], 'format')):
             # Supplied a list with at least an int and format_str.
             # Use all items in list as KVectorAxisFormatter arguments:
             x_axis_formatter = axis_formatter.KVectorAxisFormatter(
                 *x_axis_hint)
+        elif num > 0:
+            # make a standard KVectorAxisFormatter with supplied number
+            # of ticks:
+            x_axis_formatter = axis_formatter.KVectorAxisFormatter(num)
     if x_axis_formatter is None:
         log.warning('draw_bands: Did not understand x_axis_hint, '
             'using default.')
