@@ -131,6 +131,9 @@ def UniformSlab3D(
     defaults.fieldh5topng_call_3D = (
         'h5topng -0y0 -S3 -Zcbluered -C%(eps_file)s '
         '-o%(output_file)s %(h5_file)s')
+    defaults.fieldh5topng_call_3D_no_ovl = (
+        'h5topng -0y0 -S3 -Zcbluered '
+        '-o%(output_file_no_ovl)s %(h5_file)s')
 
     return do_runmode(
         sim, runmode, num_processors, draw_bands_title,

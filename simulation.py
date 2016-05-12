@@ -308,6 +308,20 @@ class Simulation(object):
             self.__dict__,
             output_file=defaults.temporary_h5,
             h5_file='<file.h5>'))
+        # NOTE: it would be really nice if we could use h5topng's -R
+        # parameter also for multiple datasets, i.e. call h5topng on
+        # multiple datasets (rather than on multiple files) and have it
+        # automatically append the dataset name to each png file name.
+        # That way, if all vector components of a field are exported
+        # in one file, the exported components' absolute values will be
+        # comparable.
+        # Possible workaround: make multiple copies of the h5 file
+        # from mpb-data (one cannot specify -d in mpb-data, see below)
+        # with filenames denoting the different components, then call
+        # h5topng with -R and multiple h5 files while specifying
+        # :dataset for each one.
+        # -> not very nice. Maybe it is time to implement a Python
+        # function to directly read and export the h5 files.
         log.info("and then 4 times h5topng for each field component:")
         for ri in ['.r', '.i']:
             dct = dict(self.__dict__, 
