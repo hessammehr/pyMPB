@@ -8,6 +8,12 @@ examples/*
 # vim temporary file
 *~
 
+# PyCharm
+.idea/
+
+# KDevelop
+.kdev4/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

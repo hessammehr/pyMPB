@@ -55,6 +55,7 @@ default_band_func_te = lambda poi : (
 #mpb_call = 'mpb'
 mpb_call = 'mpirun -np %(num_procs)s mpb-mpi'
 
+# use -T if we run the simulation with mpb-mpi:
 mpbdata_call = ('mpb-data -T -rn%(resolution)s '
                 '-x%(number_of_tiles_to_output)s '
                 '-y%(number_of_tiles_to_output)s '

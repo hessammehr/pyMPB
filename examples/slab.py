@@ -65,12 +65,19 @@ def UniformSlab3D(
     mat = Dielectric(material)
     # place the slab sideways, i.e the surface normal in y direction
     geom = Geometry(
-        # I want to hide that there is actually a periodicity in x. If I
-        # decrease the size in x, the bands are cut of at kvec_x=0.5, and there
-        # the frequency is the same as it would be at k_x*d/pi=1, when we had
-        # no periodic boundaries (compare Sakoda - Optical Properties of
-        # Photonic Crystals 2nd Edition 2005, page 177, Fig. 8.2):
-        width=0.25,
+        # I want to hide that there is actually a periodicity in x. The
+        # bands are always cut of at kvec_x=0.5 and folded back. If I
+        # decrease the size in x (e.g. by 1/8), the kvec_x at 0.5 will
+        # actually be greater (here, 0.5 * 8). This is true, as can also
+        # be seen by looking at k_magnitude in the simulation output. To
+        # make sure there is no mixing between bands, I will only look
+        # at kvec_x up to 0.25. At kvec=(1/8, 0, 0), the band
+        # frequencies are the same as it would be at k_x*d/pi=1 (d is
+        # slab thickness), when we had no periodic boundaries (compare
+        # Sakoda - Optical Properties of Photonic Crystals 2nd Edition
+        # 2005, page 177, Fig. 8.2 - actually, the frequencies are not
+        # _exactly_ the same, why? Wrong refractive index?):
+        width=0.125,
         height=1,
         depth=supercell_z,
         triangular=False,
@@ -79,20 +86,35 @@ def UniformSlab3D(
                 x=0, y=0, z=0,
                 material=mat,
                 #make it bigger than computational cell, just in case:
-                size=(1, 1, 1))])
-
+                size=(1, 2, 1))])
+    # Just below kx=0.5, the bands still mix due to the periodicity.
+    # To hide this, just cut at kx=0.25:
+    max_kx = 0.25
+    # I actually want to see TM-like and TE-like modes, like described
+    # in Joannopoulos et al., Photonic Crystals; Molding the Flow of Light,
+    # Princeton University Press 2008:
+    # Fig. 7 on page 130 & text on pages 128 and 136.
+    # I try to look everywhere in kspace to find them, but it seems there
+    # are only pure TE and TM modes.
+    # (These ...-like modes are neither mentioned in
+    # Sakoda - Optical Properties of Photonic Crystals 2nd Edition,
+    # Springer 2005,pages 176ff.)
     kspace = KSpace(
         points_list=[
-            (0.5, 0, 0), (0, 0, 0.5),  # +x -> +z ->
-            (0, 0, 0), 0.5             # Gamma -> +x
+            (0, 0, 0), (max_kx, 0, 0),  # Gamma -> +x
+            (max_kx, 0, 0.5),           # +x -> shifted +x (no bands change)
+            (0, 0, 0.5), (0, 0, 0),     # -> +z -> Gamma
+            (max_kx, 0, 0.5)       # Gamma -> shifted +x (same as Gamma->+x)
         ],
         k_interpolation=k_interpolation)
 
     # points of interest: (output mode patterns at these points)
     poi = [
-        (0.5, 0, 0), (0.375, 0, 0.125), (0.25, 0, 0.25), (0.125, 0,0.375),
-        (0, 0, 0.5), (0 ,0, 0.375), (0, 0, 0.25), (0, 0, 0.125),
-        (0, 0, 0), (0.125, 0, 0), (0.25, 0, 0), (0.375, 0, 0)
+        (0, 0, 0), (0.125, 0, 0), 
+        (0.25, 0, 0), (0.25, 0, 0.25), 
+        (0.25, 0, 0.5), (0.125, 0, 0.5),
+        (0, 0, 0.5), (0, 0, 0.25),
+        (0.125, 0, 0.25) 
     ]
     band_funcs = (
         '\n    display-zparities display-yparities' +
@@ -128,11 +150,19 @@ def UniformSlab3D(
     # only make cross-section png:
     defaults.epsh5topng_call_3D = defaults.epsh5topng_call_3D_cross_sect
     # export field patterns along another slice (default: -0z0)
+    # NOTE, for mpbdata_call: 
+    # -T because we use mpi-mpb, then -y is actually for -x
+    defaults.mpbdata_call = ('mpb-data -T -rn%(resolution)s '
+                '-y8 '
+                '-o%(output_file)s '
+                '%(h5_file)s')
+    # For the individual field components to be comparable, don't use
+    # automatic scaling, but set range with -m and -M:
     defaults.fieldh5topng_call_3D = (
-        'h5topng -0y0 -S3 -Zcbluered -C%(eps_file)s '
+        'h5topng -0y0 -S3 -Zcbluered -C%(eps_file)s -m-1 -M1 '
         '-o%(output_file)s %(h5_file)s')
     defaults.fieldh5topng_call_3D_no_ovl = (
-        'h5topng -0y0 -S3 -Zcbluered '
+        'h5topng -0y0 -S3 -Zcbluered -m-1 -M1 '
         '-o%(output_file_no_ovl)s %(h5_file)s')
 
     return do_runmode(
@@ -140,7 +170,7 @@ def UniformSlab3D(
         plot_crop_y=1,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_slice=None,
-        x_axis_hint=13)
+        x_axis_hint=11)
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -151,9 +181,9 @@ if __name__ == '__main__':
         material=2.86**2,
         numbands=10,
         k_interpolation=31,
-        resolution=8,
-        supercell_z=6,
+        resolution=64,
+        supercell_z=8,
         runmode=mode,
-        num_processors=1)
+        num_processors=8)
     if sim:
         log.info(' ##### uniform slab - success! #####\n\n')
