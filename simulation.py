@@ -400,6 +400,7 @@ class Simulation(object):
                 # show some progress:
                 print('.', end='')
                 sys.stdout.flush()
+                retcode = 0
                 for dataset in datasets:
                     # make png file name:
                     if mode:
@@ -441,7 +442,7 @@ class Simulation(object):
                                self.workingdir,
                                defaults.temporary_h5_folder,
                                fname))
-        return retcode
+        return 0
     
     def _export_data_helper(self, output_buffer, dataname):
         """grep for *dataname* in  *output_buffer* and save the data following
@@ -638,7 +639,8 @@ class Simulation(object):
             # I don't want the old figures to show later
             del plotter
 
-    def draw_field_patterns(self, title='', only_k_slice=None, show=False):
+    def draw_field_patterns(
+            self, title='', only_k_slice=None, show=False, filetype='pdf'):
         """ Place all field pattern pngs in one diagram and save it to file.
         If only_k_slice is None (default) all found images at all k vec
         numbers will be added. Specify a tuple (from, to) to only include
@@ -659,6 +661,7 @@ class Simulation(object):
             distribute_pattern_images(
                 imgfolder=dirname,
                 dstfile_prefix=dstfile_prefix,
+                dstfile_type=filetype,
                 only_k_slice=only_k_slice,
                 title=title,
                 show=show)

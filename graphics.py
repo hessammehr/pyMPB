@@ -198,6 +198,7 @@ def draw_bands(
         # make a standard KVectorAxisFormatter with supplied number of ticks:
         x_axis_formatter = axis_formatter.KVectorAxisFormatter(x_axis_hint)
     else:
+        num = 0
         try:
             # is this a sequence?
             hintlen = len(x_axis_hint)
@@ -278,7 +279,8 @@ def draw_bands(
         plotter.add_light_cone()
 
     plotter.set_plot_title(title)
-    plotter.add_legend() 
+    if len(modes) > 1 or (len(modes) == 1 and modes[0]!=''):
+        plotter.add_legend()
 
     return plotter
     

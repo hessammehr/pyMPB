@@ -25,9 +25,9 @@ default_initcode = (';load module for calculating local dos:\n'
                     '    (throw \'error "dos.scm not found"))\n\n'
                     # remove the default filename-prefix:
                     # before MPB 1.5:
-                    '(set! filename-prefix "")\n')
+                    #'(set! filename-prefix "")\n')
                     # MPB 1.5 and newer:
-                    #'(set! filename-prefix #f)\n')
+                    '(set! filename-prefix #f)\n')
 default_postcode = ''
 default_runcode = '(run-tm)'
 

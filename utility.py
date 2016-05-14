@@ -229,7 +229,7 @@ def strip_format_spec(format_str):
 
 
 def distribute_pattern_images(
-        imgfolder, dstfile_prefix, dstfile_type='png', borderpixel=5,
+        imgfolder, dstfile_prefix, dstfile_type='pdf', borderpixel=5,
         only_k_slice=None, title='', show=False):
     """Read all pngs (from MPB simulation) from *imgfolder* and distribute
     them according to bandnumber and k vector number.
@@ -499,7 +499,8 @@ def distribute_pattern_images(
 
 def do_runmode(
         sim, runmode, num_processors, bands_plot_title, plot_crop_y,
-        convert_field_patterns, field_pattern_plot_k_slice, x_axis_hint):
+        x_axis_hint, convert_field_patterns, field_pattern_plot_k_slice,
+        field_pattern_plot_filetype='pdf'):
     """Start a job on the sim object, according to runmode.
 
     Keyword arguments:
@@ -581,6 +582,7 @@ def do_runmode(
         if convert_field_patterns:
             sim.draw_field_patterns(
                 title=bands_plot_title,
+                filetype=field_pattern_plot_filetype,
                 only_k_slice=field_pattern_plot_k_slice)
     elif runmode.startswith('d'):  # display pngs
         # display png of epsilon:
