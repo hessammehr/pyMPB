@@ -144,7 +144,7 @@ def UniformSlab3D(
     if smat.epsilon == 1.0:
         matname = mat.name
     else:
-        matname = '_'.join([mat.name, 'on', smat.epsilon])
+        matname = '{0}_on_{1:.3f}'.format(mat.name, smat.epsilon)
 
     jobname = 'Slab3D_{0}_res{1}_supcell{2}'.format(
         matname, resolution, supercell_z).replace('.', 'p')
