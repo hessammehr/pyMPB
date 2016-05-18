@@ -30,40 +30,59 @@ import defaults
 import log
 
 def UniformSlab3D(
-        material, numbands=8, k_interpolation=11,
+        material, substrate_material=1, numbands=8, k_interpolation=11,
         resolution=32, mesh_size=3, supercell_z=6, runmode='sim',
         num_processors=2, convert_field_patterns=True,
         job_name_suffix='', bands_title_appendix=''):
-    """Create a 3D MPB Simulation of an unperturbed slab with thickness 1.
+    """Create a 3D MPB simulation of a uniform slab with thickness 1 in air.
 
-    material can be a string (e.g. SiN, 4H-SiC-anisotropic_c_in_z;
-    defined in data.py) or just the epsilon value (float),
-    numbands is the number of bands to calculate.
-    k_interpolation is the number of k-vectors between every two of
+    *material* is the material of the slab, *substrate_material* is the
+    material of the substrate below the slab.
+    *material* and *substrate_material* can be strings (e.g. SiN,
+    4H-SiC-anisotropic_c_in_z; defined in data.py) or just the epsilon
+    value (float); By default, *substrate_material* is 1, i.e. air.
+    *numbands* is the number of bands to calculate.
+    *k_interpolation* is the number of k-vectors between every two of
     the used high symmetry points Gamma, X, M and Gamma again, so the
     total number of simulated k-vectors will be 3*k_interpolation + 4.
-    resolution and mesh_size are as described in MPB documentation.
-    supercell_z is the height of the supercell in units of lattice constant;
-    runmode can be one of the following:
+    *resolution* and *mesh_size* are as described in MPB documentation.
+    *supercell_z* is the height of the supercell in units of lattice
+    constant;
+    *runmode* can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : create the sim object and save the ctl file
         'sim' (default): run the simulation and do all postprocessing
         'postpc' : do all postprocessing; simulation should have run before!
         'display': display all pngs done during postprocessing. This is the
                    only mode that is interactive.
-    convert_field_patterns indicates whether field pattern h5 files
+    *convert_field_patterns* indicates whether field pattern h5 files
     should be converted to png (only when postprocessing).
-    Optionally specify a job_name_suffix (appendix to the folder name etc.)
-    which will be appended to the jobname created automatically from
-    the most important parameters.
-    Specify bands_title_appendix, which will be added to the title
+    Optionally specify a *job_name_suffix* (appendix to the folder name
+    etc.) which will be appended to the jobname created automatically
+    from the most important parameters.
+    Specify *bands_title_appendix*, which will be added to the title
     of the bands diagram.
 
     """
-    #global geom # for debugging
-
     mat = Dielectric(material)
-    # place the slab sideways, i.e the surface normal in y direction
+    smat = Dielectric(substrate_material)
+
+    objects = [
+        Block(
+            x=0, y=0, z=0,
+            material=mat,
+            #make it bigger than computational cell, just in case:
+            size=(1, 2, 1))
+    ]
+    if smat.epsilon != 1.0:
+        objects.append(
+            Block(
+                x=0, y=0, z=-0.5 - (supercell_z - 1) / 4.0,
+                material=smat,
+                size=(1, 2, (supercell_z - 1) / 2.0)
+            )
+        )
+
     geom = Geometry(
         # I want to hide that there is actually a periodicity in x. The
         # bands are always cut of at kvec_x=0.5 and folded back. If I
@@ -81,12 +100,8 @@ def UniformSlab3D(
         height=1,
         depth=supercell_z,
         triangular=False,
-        objects=[
-            Block(
-                x=0, y=0, z=0,
-                material=mat,
-                #make it bigger than computational cell, just in case:
-                size=(1, 2, 1))])
+        objects=objects)
+
     # Just below kx=0.5, the bands still mix due to the periodicity.
     # To hide this, just cut at kx=0.25:
     max_kx = 0.25
@@ -124,8 +139,15 @@ def UniformSlab3D(
         ) % ' '.join(str(c) for c in vec) for vec in poi ])
     )
 
+    # material name for jobname and draw_bands_title:
+    # note: quick & dirty.
+    if smat.epsilon == 1.0:
+        matname = mat.name
+    else:
+        matname = '_'.join([mat.name, 'on', smat.epsilon])
+
     jobname = 'Slab3D_{0}_res{1}_supcell{2}'.format(
-        mat.name, resolution, supercell_z).replace('.', 'p')
+        matname, resolution, supercell_z).replace('.', 'p')
 
     sim = Simulation(
         jobname=jobname + job_name_suffix,
@@ -141,7 +163,7 @@ def UniformSlab3D(
 
     draw_bands_title = ('Uniform slab; '
                         '{0}, resolution={1}, supercell_z={2}'.format(
-                            mat.name,
+                            matname,
                             resolution,
                             supercell_z) +
                         bands_title_appendix)
@@ -179,6 +201,7 @@ if __name__ == '__main__':
         mode='sim'
     sim = UniformSlab3D(
         material=2.86**2,
+        substrate_material=1,
         numbands=10,
         k_interpolation=31,
         resolution=64,
