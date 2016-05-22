@@ -180,19 +180,21 @@ def UniformSlab3D(
                 '%(h5_file)s')
     # For the individual field components to be comparable, don't use
     # automatic scaling, but set range with -m and -M:
+    rnge=1
     defaults.fieldh5topng_call_3D = (
-        'h5topng -0y0 -S3 -Zcbluered -C%(eps_file)s -m-1 -M1 '
-        '-o%(output_file)s %(h5_file)s')
+        'h5topng -0y0 -S3 -Zcbluered -C%(eps_file)s -m-{0} -M{0} '
+        '-o%(output_file)s %(h5_file)s'.format(rnge))
     defaults.fieldh5topng_call_3D_no_ovl = (
-        'h5topng -0y0 -S3 -Zcbluered -m-1 -M1 '
-        '-o%(output_file_no_ovl)s %(h5_file)s')
+        'h5topng -0y0 -S3 -Zcbluered -m-{0} -M{0} '
+        '-o%(output_file_no_ovl)s %(h5_file)s'.format(rnge))
 
     return do_runmode(
         sim, runmode, num_processors, draw_bands_title,
-        plot_crop_y=1,
+        plot_crop_y=1.0,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_slice=None,
-        x_axis_hint=11)
+        x_axis_hint=11,
+        field_pattern_plot_filetype='pdf')
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
