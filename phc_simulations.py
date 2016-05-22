@@ -16,8 +16,7 @@ from simulation import Simulation
 from geometry import Geometry
 from kspace import KSpaceTriangular
 from objects import Dielectric, Rod, Block
-from defaults import default_initcode
-from defaults import default_band_func_te, default_band_func_tm
+import defaults
 from utility import do_runmode
 
 def TriHoles2D(
@@ -78,12 +77,12 @@ def TriHoles2D(
         numbands=numbands,
         resolution=resolution,
         mesh_size=mesh_size,
-        initcode=default_initcode +
+        initcode=defaults.default_initcode +
                  '(set! default-material {0})'.format(str(mat)),
         postcode='',
-        runcode='(run-tm %s)\n' % default_band_func_tm(poi) +
+        runcode='(run-tm %s)\n' % defaults.default_band_func_tm(poi) +
                 '(print-dos 0 1.2 121)\n\n' +
-                '(run-te %s)\n' % default_band_func_te(poi) +
+                '(run-te %s)\n' % defaults.default_band_func_te(poi) +
                 '(print-dos 0 1.2 121)\n\n',
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
@@ -165,11 +164,11 @@ def TriHolesSlab3D(
         numbands=numbands,
         resolution=resolution,
         mesh_size=mesh_size,
-        initcode=default_initcode,
+        initcode=defaults.default_initcode,
         postcode='',
-        runcode='(run-zodd %s)\n' % default_band_func_tm(poi) +
+        runcode='(run-zodd %s)\n' % defaults.default_band_func_tm(poi) +
                 '(print-dos 0 1.2 121)\n\n' +
-                '(run-zeven %s)\n' % default_band_func_te(poi) +
+                '(run-zeven %s)\n' % defaults.default_band_func_te(poi) +
                 '(print-dos 0 1.2 121)\n\n',
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
