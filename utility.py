@@ -20,6 +20,7 @@
 
 from __future__ import division
 from math import sqrt, pi, sin, cos
+import numpy as np
 from geometry import Geometry
 from objects import Rod
 from copy import copy
@@ -186,7 +187,47 @@ def get_gap_bands(
             bands.append((bandnum, lo, hi, width))
     return bands
 
-    
+
+def sum_of_squares(band1_data, band2_data, light_line=None):
+    """Calculate the sum of squared differences of two bands.
+
+    This can be used to measure the similarity of two bands. Useful for
+    example to check the convergence by comparing subsequent simulations
+    while increasing the resolution.
+
+    :param band1_data:
+        Sequence of frequencies of a band to compare.
+    :param band2_data:
+        Sequence of frequencies of a band to compare to band1.
+        The sequence length must be the same than band1_data.
+    :param light_line:
+        Sequence of frequencies. If provided, squares will only be
+        summed where both band1's and band2's frequencies are below the
+        light_line frequency. (default: None, i.e compare all
+        frequencies)
+    :return:
+        The sum of squared differences of the two bands. If both bands
+        are exactly equal, the returned sum is zero.
+
+    """
+    numk = min(len(band1_data), len(band2_data))
+    if light_line is not None:
+        band1 = []
+        band2 = []
+        for i in range(numk):
+            if (band1_data[i] < light_line[i] and
+                    band2_data[i] < light_line[i]):
+                band1.append(band1_data[i])
+                band2.append(band2_data[i])
+        band1 = np.array(band1)
+        band2 = np.array(band2)
+    else:
+        band1 = np.array(band1_data)
+        band2 = np.array(band2_data)
+
+    return np.sum(np.square(band1 - band2))
+
+
 def strip_format_spec(format_str):
     """Remove all format-specifications from the format-string.
 
