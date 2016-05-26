@@ -52,6 +52,7 @@ def main():
             mesh_size=7,
             runmode=mode,
             num_processors=2,
+            save_field_patterns=True,
             convert_field_patterns=True)
         
         if not sim:

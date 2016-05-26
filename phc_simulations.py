@@ -21,8 +21,9 @@ from utility import do_runmode
 
 def TriHoles2D(
         material, radius, numbands=8, k_interpolation=11, 
-        resolution=32, mesh_size=7, runmode='sim',
-        num_processors=2, convert_field_patterns=True, 
+        resolution=32, mesh_size=7,
+        runmode='sim', num_processors=2,
+        save_field_patterns=True, convert_field_patterns=True,
         job_name_suffix='', bands_title_appendix=''):
     """Create a 2D MPB Simulation of a triangular lattice of holes.
     material can be a string (e.g. SiN, 4H-SiC-anisotropic_c_in_z;
@@ -40,6 +41,8 @@ def TriHoles2D(
         'postpc' : do all postprocessing; simulation should have run before!
         'display': display all pngs done during postprocessing. This is the
                    only mode that is interactive.
+    save_field_patterns indicates whether field pattern h5 files are
+    generated during the simulation (at points of high symmetry);
     convert_field_patterns indicates whether field pattern h5 files
     should be converted to png (only when postprocessing).
     Optionally specify a job_name_suffix (appendix to the folder name etc.) 
@@ -65,7 +68,10 @@ def TriHoles2D(
     kspace = KSpaceTriangular(k_interpolation=k_interpolation)
 
     # points of interest: (output mode patterns at these points)
-    poi = kspace.points()[0:-1]
+    if save_field_patterns:
+        poi = kspace.points()[0:-1]
+    else:
+        poi = []
 
     jobname = 'TriHoles2D_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
@@ -101,8 +107,9 @@ def TriHoles2D(
 
 def TriHolesSlab3D(
         material, radius, thickness, numbands=8, k_interpolation=11, 
-        resolution=32, mesh_size=7, supercell_z=6, runmode='sim',
-        num_processors=2, convert_field_patterns=True, 
+        resolution=32, mesh_size=7, supercell_z=6,
+        runmode='sim', num_processors=2,
+        save_field_patterns=True, convert_field_patterns=True,
         job_name_suffix='', bands_title_appendix=''):
     """Create a 3D MPB Simulation of a slab with a triangular lattice of 
     holes. material can be a string (e.g. SiN, 4H-SiC-anisotropic_c_in_z;
@@ -121,6 +128,8 @@ def TriHolesSlab3D(
         'postpc' : do all postprocessing; simulation should have run before!
         'display': display all pngs done during postprocessing. This is the
                    only mode that is interactive.
+    save_field_patterns indicates whether field pattern h5 files are
+    generated during the simulation (at points of high symmetry);
     convert_field_patterns indicates whether field pattern h5 files
     should be converted to png (only when postprocessing).
     Optionally specify a job_name_suffix (appendix to the folder name etc.) 
@@ -152,7 +161,10 @@ def TriHolesSlab3D(
     kspace = KSpaceTriangular(k_interpolation=k_interpolation)
 
     # points of interest: (output mode patterns at these points)
-    poi = kspace.points()[0:-1]
+    if save_field_patterns:
+        poi = kspace.points()[0:-1]
+    else:
+        poi = []
 
     jobname = 'TriHolesSlab_{0}_r{1:03.0f}_t{2:03.0f}'.format(
                     mat.name, radius * 1000, thickness * 1000)

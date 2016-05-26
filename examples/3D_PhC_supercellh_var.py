@@ -65,6 +65,7 @@ def main():
             supercell_z=step,
             runmode=mode,
             num_processors=8,
+            save_field_patterns=True,
             convert_field_patterns=True,
             job_name_suffix='_sct{0:03.0f}'.format(step*10),
             bands_title_appendix=', supercell thickness={0:02.1f}'.format(step))

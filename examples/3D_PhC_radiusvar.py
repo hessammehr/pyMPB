@@ -53,6 +53,7 @@ def main():
             supercell_z=6,
             runmode=mode,
             num_processors=2,
+            save_field_patterns=True,
             convert_field_patterns=True)
         
         if not sim:
