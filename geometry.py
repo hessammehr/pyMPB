@@ -64,6 +64,13 @@ class Geometry(object):
 
     def __str__(self):
         return '(list' + ''.join(str(a) for a in self.objects) + ')'
+
+    def __repr__(self):
+        s = '; '.join(
+            [
+                'lattice = {0!r}'.format(self.lattice),
+                'geometry = {0!r}'.format(self.__str__())])
+        return '<geometry.Geometry object: {0}>'.format(s)
     
     def __iter__(self):
         return self

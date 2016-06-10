@@ -107,6 +107,11 @@ class KSpace(object):
         else:
             return '(list\n%s)'%vectors
 
+    def __repr__(self):
+        s = '; '.join('{0}={1!s}'.format(key, val) for key, val in
+                         self.__dict__.items())
+        return '<kspace.KSpace object: {0}>'.format(s)
+
     def count_interpolated(self):
         """Return total number of k-vecs after interpolation."""
         return (len(self.points()) - 1) * (self.k_interpolation + 1) + 1

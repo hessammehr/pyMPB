@@ -184,7 +184,7 @@ class Simulation(object):
 
         log.info(
             'pyMPB Simulation created with following properties:' + 
-            ''.join(['\npyMPBprop: {0}={1}'.format(key, val) for key, val in 
+            ''.join(['\npyMPBprop: {0}={1!r}'.format(key, val) for key, val in
                 self.__dict__.items()]) + '\n\n')
         # TODO log all parameters of Simulation object in such a way
         # that it can be recreated exactly.
