@@ -1,16 +1,23 @@
-    #Copyright 2016 Juergen Probst
-    #This program is free software; you can redistribute it and/or modify
-    #it under the terms of the GNU General Public License as published by
-    #the Free Software Foundation; either version 3 of the License, or
-    #(at your option) any later version.
+# -*- coding:utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright 2016 Juergen Probst
+#
+# This file is part of pyMPB.
+#
+# pyMPB is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# pyMPB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with pyMPB.  If not, see <http://www.gnu.org/licenses/>.
+# ----------------------------------------------------------------------
 
-    #This program is distributed in the hope that it will be useful,
-    #but WITHOUT ANY WARRANTY; without even the implied warranty of
-    #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    #GNU General Public License for more details.
-
-    #You should have received a copy of the GNU General Public License
-    #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division, print_function
 
@@ -24,16 +31,22 @@ import log
 
 
 def infer_k_axis_label_from_format_string(format_str):
-    """Given a format_str that is intended to format tick labels, infer an axis
-    label for the k-axis.
+    """Given a format_str that is intended to format tick labels, infer
+    an axis label for the k-axis.
 
-    *format_str* is intended to be used to create tick labels by
-    format_str.format(*k_vector), as used in KVectorAxisFormatter.
+    :param format_str:
+        the format string that is intended to be used to create tick
+        labels by format_str.format(*k_vector), as used in
+        KVectorAxisFormatter.
 
-    If it does not succeed, it returns an empty string.
+    :return:
+        String with an axis label for a k-vector axis.
+
+        If it does not succeed, returns an empty string.
 
     """
-    # Edit format_str, which usually accepts floats, so that it accepts strings.
+    # Edit format_str, which usually accepts floats, so that it accepts
+    # strings.
     fstr = strip_format_spec(format_str)
 
     try:
@@ -55,12 +68,14 @@ def infer_k_axis_label_from_format_string(format_str):
 
 
 class CustomAxisFormatter(mticker.Formatter):
-    def __init__(self, ticks=[], labels=[], hover_data=None, axis_label=''):
+    def __init__(self, ticks=list(), labels=list(), hover_data=None,
+                 axis_label=''):
         """A formatter to set custom ticks on a matplotlib.axis.
 
         Keyword arguments:
             ticks      : a sequence with the major tick positions
-                         (first kvec is at position 0, the next at 1 and so on),
+                         (first kvec is at position 0, the next at 1 and
+                         so on),
             labels     : a sequence of strings for the major tick labels
                          (must have same length than ticks).
             hover_data : If provided, the corresponding item in this sequence
@@ -87,6 +102,8 @@ class CustomAxisFormatter(mticker.Formatter):
         self._ticks = ticks
         self._labels = labels
         self._hover_data = None
+        self._hover_func = lambda x: x
+        self._hover_func_is_default = True
         self.set_hover_data(hover_data)
         self._axis_label = axis_label
 
@@ -108,34 +125,38 @@ class CustomAxisFormatter(mticker.Formatter):
             return self._labels[tickindex]
 
     def _get_hover_data_from_position(self, x):
-        # TODO: here, we could return the linear interpolation between the
-        # individual data points, if they are numbers or vectors of numbers,
-        # because x is a continuous float, but for now, rounding suffices:
+        # TODO: here, we could return the linear interpolation between
+        # the individual data points, if they are numbers or vectors of
+        # numbers, because x is a continuous float, but for now,
+        # rounding suffices:
         if x >= 0 and int(x + 0.5) < len(self._hover_data):
             return self._hover_data[int(x + 0.5)]
         else:
             return x
 
     def set_hover_data(self, hover_data):
-        """Set the data that will be shown when the mouse hovers over the plot.
+        """Set the data that will be shown when the mouse hovers over
+        the plot.
 
-        *hover_data* can be a sequence of any objects with a __str__ method,
-        it just needs the have the same amount of entries than the total
-        number of indices (integers) on the x-axis. Then the corresponding
-        item will be shown in the plot's status bar when the mouse hovers
-        over the plot. This is useful e.g. if this is a list of all k-vectors
-        of the simulation.
+        :param hover_data:
+            can be a sequence of any objects with a __str__ method, it
+            just needs the have the same amount of entries than the
+            total number of indices (integers) on the x-axis. Then the
+            corresponding item will be shown in the plot's status bar
+            when the mouse hovers over the plot. This is useful e.g. if
+            this is a list of all k-vectors of the simulation.
 
-        Alternatively, this can also be a callable function which accepts one
-        argument, the x index, and returns the data to be shown.
+            Alternatively, this can also be a callable function which
+            accepts one argument, the x index, and returns the data to
+            be shown.
 
-        This data can be unset by providing None as argument. In that case,
-        the status bar will just show the x-position.
+            This data can be unset by providing None as argument. In
+            that case, the status bar will just show the x-position.
 
         """
         self._hover_func_is_default = False
         if hover_data is None:
-            self._hover_func = lambda x : x
+            self._hover_func = lambda x: x
             self._hover_func_is_default = True
         elif callable(hover_data):
             self._hover_func = hover_data
@@ -145,17 +166,23 @@ class CustomAxisFormatter(mticker.Formatter):
 
     def get_longest_label_length(self):
         """Return the length of the longest string in list of axis labels."""
-        return max([len(label) for label in self._labels])
+        if len(self._labels) > 0:
+            return max([len(label) for label in self._labels])
+        else:
+            return 0
 
     def apply_to_axis(self, axis, **kwargs):
         """Set the tick positions and labels on an axis using this formatter.
 
-        Keyword arguments:
-        axis       : the matplotlib.axis object this formatter will be applied
-                     to,
-        kwargs     : Any remaining keyword arguments will be forwarded
-                     to the matplotlib.text.Text objects making up the
-                     major labels, so they can be formatted.
+        :param axis:
+            the matplotlib.axis object this formatter will be applied
+            to,
+        :param kwargs:
+            Any remaining keyword arguments will be forwarded to the
+            matplotlib.text.Text objects making up the major labels, so
+            they can be formatted.
+        :return: None
+
         """
         # set the minor ticks, one at each simulated k-vector:
         axis.set_minor_locator(mticker.IndexLocator(1, 0))
@@ -180,37 +207,41 @@ class CustomAxisFormatter(mticker.Formatter):
 
 class KVectorAxisFormatter(CustomAxisFormatter):
     def __init__(
-            self, num_ticks, format_str=defaults.default_kvecformatter_format_str,
+            self, num_ticks,
+            format_str=defaults.default_kvecformatter_format_str,
             hover_data=None, axis_label='',
             fractions=defaults.ticks_fractions):
-        """A formatter to set ticks labeled with k-vectors on a matplotlib.axis.
+        """A formatter to set ticks labeled with k-vectors on a
+        matplotlib.axis.
 
-        Keyword arguments:
-            num_ticks  : The number of major ticks to place on the axis;
-            format_str : The ticks will be labeled with the format_str, which
-                         will be formatted with format_str.format(*vector),
-                         where 'vector' is a sequence taken from hover_data at
-                         the tick position index.
-            fractions  : If True, the formatter will try to convert the
-                         vector's decimal components to simple fractions
-                         in the label. (default: False)
+        :param num_ticks:
+            The number of major ticks to place on the axis
+        :param format_str:
+            The ticks will be labeled with the format_str, which will be
+            formatted with format_str.format(*vector), where 'vector' is
+            a sequence taken from hover_data at the tick position index.
+        :param hover_data:
+            This should be a sequence of all k-vectors included in the
+            diagramm, i.e. a sequence of sequences. The tick labels will
+            be generated from this data. Therefore each k-vector should
+            have at least the same number of entries than needed for
+            format_str.
 
-            hover_data : This should be a sequence of all k-vectors included in
-                         the diagramm, i.e. a sequence of sequences. The tick
-                         labels will be generated from this data. Therefore
-                         each k-vector should have at least the same number of
-                         entries than needed for format_str.
+            If hover_data is left at the default value (i.e. None), it
+            must be set later with set_hover_data, otherwise no labels
+            will be shown.
 
-                         If hover_data is left at the default value (i.e. None),
-                         it must be set later with set_hover_data, otherwise
-                         no labels will be shown.
+            The corresponding item in this sequence will also be shown
+            in the plot's status bar if the mouse hovers over the plot.
+        :param axis_label:
+            the label printed underneath the x-axis (a string)
+        :param fractions:
+            If True, the formatter will try to convert the vector's
+            decimal components to simple fractions in the label.
+            (default: False)
+        :return:
+            KVectorAxisFormatter object
 
-                         The corresponding item in this sequence will also be
-                         shown in the plot's status bar if the mouse
-                         hovers over the plot.
-
-
-            axis_label : the label printed underneath the x-axis (a string).
         """
         self._num_ticks = num_ticks
         self._format_str = format_str
@@ -228,12 +259,16 @@ class KVectorAxisFormatter(CustomAxisFormatter):
     def _make_fraction_str(self, floatnum):
         """Try to make a fraction string of floatnum.
 
-        *floatnum* can be a number, a string with number or a sequence of these.
-
-        If the resulting fraction's denominator is greater than
-        defaults.tick_max_denominator, or if the fraction could not be created
-        because floatnum was no number, it will just return the original
-        *floatnum*.
+        :param floatnum:
+            can be a number, a string with number or a sequence of these.
+        :return:
+            If the resulting fraction's denominator is greater than
+            defaults.tick_max_denominator, or if the fraction could not
+            be created because floatnum was no number, it will just
+            return the original floatnum.
+            Otherwise, it returns a string with floatnum written as
+            fraction or, if floatnum was a sequence, a list of fraction
+            strings,
 
         """
         try:
@@ -265,12 +300,14 @@ class KVectorAxisFormatter(CustomAxisFormatter):
                 return floatnum
 
     def set_hover_data(self, hover_data):
-        """Set the data that will be shown when the mouse hovers over the plot
-        and used to create the tick labels.
+        """Set the data that will be shown when the mouse hovers over
+        the plot and used to create the tick labels.
 
-        *hover_data* must be a sequence of all k-vectors of the simulation,
-        i.e. with the same amount of entries than the total number of indices
-        (integers) on the x-axis.
+        :param hover_data:
+            must be a sequence of all k-vectors of the simulation, i.e.
+            with the same amount of entries than the total number of
+            indices (integers) on the x-axis.
+        :return: None
 
         """
         # set the hover data using the parent method:
@@ -300,7 +337,8 @@ class KVectorAxisFormatter(CustomAxisFormatter):
             try:
                 lbl = self._format_str.format(*vec)
             except IndexError:
-                log.warning('KVectorAxisFormatter: format_str "{0}" does not '
+                log.warning(
+                    'KVectorAxisFormatter: format_str "{0}" does not '
                     'match hover_data: {1}'.format(self._format_str, vec))
                 lbl = ''
             except ValueError:
@@ -343,6 +381,8 @@ class KSpaceAxisFormatter(CustomAxisFormatter):
                 for l in kspace.labels()
             ]
         else:
+            log.warning('KSpaceAxisFormatter: KSpace object has no labels! '
+                        'k-vec axis will have no ticks.')
             ticks = []
             labels = []
         CustomAxisFormatter.__init__(

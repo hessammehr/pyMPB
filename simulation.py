@@ -48,8 +48,13 @@ class Simulation(object):
         (runcode) and as code executed after the simulation (postcode).
 
         If work_in_subfolder is True (default), all simulation and log
-        output will be placed in a separate subdirectory called like the
-        jobname. Set clear_subfolder to True (default) if you want this
+        output will be placed in a separate subdirectory under the
+        current working directory called like the jobname.
+        work_in_subfolder can also be a custom subfolder name,
+        including any path, if not to be placed in current working
+        directory.
+
+        Set clear_subfolder to True (default) if you want this
         subfolder to be emptied (will make backup if there is an old
         folder with the same name). clear_subfolder should be False if
         you want to do postprocessing on existing simulation data.
@@ -75,10 +80,18 @@ class Simulation(object):
 
         self.work_in_subfolder = work_in_subfolder
         self.clear_subfolder = clear_subfolder
-        if work_in_subfolder:
-            self.workingdir = path.abspath(path.join(path.curdir, jobname))
+        if isinstance(work_in_subfolder, bool):
+            if work_in_subfolder:
+                # create default subfolder from jobname:
+                self.workingdir = path.abspath(
+                    path.join(path.curdir, jobname))
+            else:
+                # work here, no subfolder:
+                self.workingdir = path.abspath(path.curdir)
         else:
-            self.workingdir = path.abspath(path.curdir)
+            # hopefully a string
+            self.workingdir = path.abspath(
+                    path.join(path.curdir, work_in_subfolder))
 
         # the .ctl file that MPB will use:
         self.ctl_file = jobname + '.ctl'

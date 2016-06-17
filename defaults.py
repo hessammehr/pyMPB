@@ -125,7 +125,7 @@ long_xticklabels_when_longer_than = 12
 # Text added to gaps drawn in the band diagrams,
 # formatted with default_gaptext.format(gapsize_in_percent):
 default_gaptext='gap size: {0:.2f}%'
-default_x_axis_hint = 4 # 4 equally spaced ticks, labeled with k-vector
+default_x_axis_hint = 5 # 5 equally spaced ticks, labeled with k-vector
 default_y_axis_label = r'frequency $\omega a/2\pi c$'
 default_x_axis_label = 'wave vector {0}'
 # the x_axis_label used when showing high symmetry point labels on the k

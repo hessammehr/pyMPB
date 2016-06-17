@@ -1,27 +1,33 @@
-    #Copyright 2016 Juergen Probst
-    #This program is free software; you can redistribute it and/or modify
-    #it under the terms of the GNU General Public License as published by
-    #the Free Software Foundation; either version 3 of the License, or
-    #(at your option) any later version.
-
-    #This program is distributed in the hope that it will be useful,
-    #but WITHOUT ANY WARRANTY; without even the implied warranty of
-    #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    #GNU General Public License for more details.
-
-    #You should have received a copy of the GNU General Public License
-    #along with this program. If not, see <http://www.gnu.org/licenses/>.
+# -*- coding:utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright 2016 Juergen Probst
+#
+# This file is part of pyMPB.
+#
+# pyMPB is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# pyMPB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with pyMPB.  If not, see <http://www.gnu.org/licenses/>.
+# ----------------------------------------------------------------------
 
 from __future__ import division
-from math import sqrt
 from numpy import linspace
 from defaults import default_k_interpolation
 import log
 
+
 class KSpace(object):
     def __init__(
             self, points_list, k_interpolation=default_k_interpolation,
-            point_labels = [], **kwargs):
+            point_labels=list(), **kwargs):
         """Setup a k-space for the simulation with custom k-points.
 
         Keyword arguments:
@@ -75,41 +81,37 @@ class KSpace(object):
         pllen = len(point_labels)
         if pllen and pllen < len(three_list):
             # fill up with empty labels:
-            point_labels.extend([''] * len(three_list) - pllen)
+            point_labels.extend([''] * (len(three_list) - pllen))
         # make local copy, and cut away excess labels:
         point_labels = point_labels[:len(three_list)]
 
-
-        default_dict = {'k_interpolation':k_interpolation,
-                        'points_list':three_list,
-                        'point_labels':point_labels}
-        default_dict.update(kwargs)
-        self.__dict__.update(default_dict)
+        self.k_interpolation = k_interpolation
+        self.points_list = three_list
+        self.point_labels = point_labels
+        self.__dict__.update(kwargs)
 
     def __str__(self):
         vector3 = '    (vector3 %s %s %s)\n'
         vector3_commented = '    (vector3 %s %s %s)%s\n'
         if self.point_labels:
             # only add '  ;' if label is not empty:
-            comments = ['  ;' + pl if pl else pl for pl in
-                             self.point_labels]
+            comments = ['  ;' + pl if pl else pl for pl in self.point_labels]
             vectors = ''.join(
                 vector3_commented % (
                     xyz[0], xyz[1], xyz[2], comments[i])
-                        for i, xyz in enumerate(self.points()))
+                for i, xyz in enumerate(self.points()))
         else:
-            vectors = ''.join(vector3 % (x,y,z) for x,y,z in self.points())
+            vectors = ''.join(vector3 % (x, y, z) for x, y, z in self.points())
 
         if self.k_interpolation:
             return ('(interpolate %i (list\n%s))' %
-            #return ('(kinterpolate-uniform %i (list\n%s))' %
-                (self.k_interpolation, vectors))
+                    (self.k_interpolation, vectors))
         else:
-            return '(list\n%s)'%vectors
+            return '(list\n%s)' % vectors
 
     def __repr__(self):
         s = '; '.join('{0}={1!s}'.format(key, val) for key, val in
-                         self.__dict__.items())
+                      self.__dict__.items())
         return '<kspace.KSpace object: {0}>'.format(s)
 
     def count_interpolated(self):
@@ -140,6 +142,7 @@ class KSpace(object):
         else:
             return []
 
+
 class KSpaceTriangular(KSpace):
     def __init__(self, k_interpolation=default_k_interpolation):
         """Setup a k-space for the simulation with critical k-points along the
@@ -147,11 +150,13 @@ class KSpaceTriangular(KSpace):
         lattice, i.e.: [Gamma, M, K, Gamma].
 
         """
-        KSpace.__init__(self,
+        KSpace.__init__(
+            self,
             points_list=[(0, 0, 0), (0, 0.5, 0), ('(/ -3)', '(/ 3)', 0),
                          (0, 0, 0)],
             k_interpolation=k_interpolation,
             point_labels=['Gamma', 'M', 'K', 'Gamma'])
+
 
 class KSpaceRectangular(KSpace):
     def __init__(self, k_interpolation=default_k_interpolation):
@@ -160,11 +165,13 @@ class KSpaceRectangular(KSpace):
         i.e.: [Gamma, X, M, Gamma].
 
         """
-        KSpace.__init__(self,
+        KSpace.__init__(
+            self,
             points_list=[(0, 0, 0), (0.5, 0, 0), (0.5, 0.5, 0),
                          (0, 0, 0)],
             k_interpolation=k_interpolation,
             point_labels=['Gamma', 'X', 'M', 'Gamma'])
+
 
 class KSpaceRectangularGrid(KSpace):
     def __init__(self, x_steps, y_steps):
@@ -179,5 +186,6 @@ class KSpaceRectangularGrid(KSpace):
                 for y in linspace(-0.5, 0.5, y_steps)
                 for x in linspace(-0.5, 0.5, x_steps)]
         # x_steps and y_steps needed in bandstructure plot in graphics.py:
-        KSpace.__init__(self, points_list=grid, k_interpolation=0,
-                        x_steps=x_steps, y_steps=y_steps)
+        KSpace.__init__(
+            self, points_list=grid, k_interpolation=0,
+            x_steps=x_steps, y_steps=y_steps)
