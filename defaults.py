@@ -13,49 +13,7 @@
     #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division, print_function
-
-default_resolution = 32
-default_mesh_size = 3
-default_numbands = 8
-# the number of bands to calculate if calculation is only supposed to be used
-# for projection of bands:
-num_projected_bands = 4
-default_k_interpolation = 3
-default_initcode = (';load module for calculating local dos:\n'
-                    '(define dosmodule (%search-load-path "dosv2.scm"))\n'
-                    '(if dosmodule\n'
-                    '    (include dosmodule)\n'
-                    '    (throw \'error "dos.scm not found"))\n\n'
-                    # remove the default filename-prefix:
-                    # before MPB 1.5:
-                    #'(set! filename-prefix "")\n')
-                    # MPB 1.5 and newer:
-                    '(set! filename-prefix #f)\n')
-default_postcode = ''
-default_runcode = '(run-tm)'
-
-number_of_tiles_to_output = 3
-# Field patterns transformed to PNG will be placed in subfolders named
-# (field_output_folder_prefix + '_' + mode):
-field_output_folder_prefix = 'pngs'
-# specify wheter the rather big hdf5 files should be kept after they
-# were converted to png files:
-delete_h5_after_postprocessing = True
-
-# poi: k-points of interest:
-default_band_func_tm = lambda poi : (
-        '\n    display-group-velocities' +
-        ''.join([(
-        '\n    (output-at-kpoint (vector3 %s) '
-        'fix-efield-phase output-efield-z)') %
-        ' '.join(str(c) for c in vec) for vec in poi]))
-# poi: k-points of interest:
-default_band_func_te = lambda poi : (
-        '\n    display-group-velocities' +
-        ''.join([(
-        '\n    (output-at-kpoint (vector3 %s) '
-        'fix-efield-phase output-hfield-z)') %
-        ' '.join(str(c) for c in vec) for vec in poi]))
+from subprocess import check_output
 
 
 #mpb_call = 'mpb'
@@ -83,11 +41,80 @@ fieldh5topng_call_3D_no_ovl = ('h5topng -0z0 -S3 -Zcbluered '
                         '-o%(output_file_no_ovl)s %(h5_file)s')
 display_png_call = 'display  %(files)s'
 
+# find out mpb version:
+mpbversion = 'n/a'
+for mpb in ['mbp', 'mpbi', 'mpb-mpi', 'mpbi-mpi']:
+    try:
+        mpbversion = check_output([mpb, '--version']).split()[3]
+        break
+    except OSError:
+        pass
+
+default_resolution = 32
+default_mesh_size = 3
+default_numbands = 8
+# the number of bands to calculate if calculation is only supposed to be used
+# for projection of bands:
+num_projected_bands = 4
+default_k_interpolation = 3
+
+newmpb = mpbversion >= '1.5.0'
+default_initcode = (
+    ';load module for calculating local dos:\n'
+    '(define dosmodule (%search-load-path "dosv2.scm"))\n'
+    '(if dosmodule\n'
+    '    (include dosmodule)\n'
+    '    (throw \'error "dos.scm not found"))\n\n'
+    ';remove the default filename-prefix:\n'
+    ';before MPB 1.5:\n' +
+    ('{0[0]}(set! filename-prefix "")\n'
+     ';MPB 1.5 and newer:\n'
+     '{0[1]}(set! filename-prefix #f)\n\n').format(
+        [';', ''] if newmpb else ['', ';'])
+)
+
+
+default_postcode = ''
+default_runcode = '(run-te)'
+
+number_of_tiles_to_output = 3
+# Field patterns transformed to PNG will be placed in subfolders named
+# (field_output_folder_prefix + '_' + mode):
+field_output_folder_prefix = 'pngs'
+# specify wheter the rather big hdf5 files should be kept after they
+# were converted to png files:
+delete_h5_after_postprocessing = True
+
+
+def default_band_func_tm(poi):
+    """poi: k-points of interest"""
+    return (
+        '\n    display-group-velocities' +
+        ''.join([(
+            '\n    (output-at-kpoint (vector3 %s) '
+            'fix-efield-phase output-efield-z)') %
+            ' '.join(str(c) for c in vec) for vec in poi]))
+
+
+def default_band_func_te(poi):
+    """poi: k-points of interest"""
+    return (
+        '\n    display-group-velocities' +
+        ''.join([(
+            '\n    (output-at-kpoint (vector3 %s) '
+            'fix-efield-phase output-hfield-z)') %
+            ' '.join(str(c) for c in vec) for vec in poi]))
+
+
 temporary_epsh5 = './temporary_eps.h5'
 temporary_h5 = './temporary.h5'
 temporary_h5_folder = './patterns~/'
 
 isQuiet = False
+
+log_format = "%(asctime)s %(levelname)s: %(message)s"
+log_datefmt = "%d.%m.%Y %H:%M:%S"
+
 template = '''%(initcode)s
 
 (set! geometry-lattice %(lattice)s)
@@ -113,10 +140,6 @@ template = '''%(initcode)s
 #####################################################
 ###          bandplotter defaults                 ###
 #####################################################
-
-
-log_format = "%(asctime)s %(levelname)s: %(message)s"
-log_datefmt = "%d.%m.%Y %H:%M:%S"
 
 fig_size = (12, 9)
 

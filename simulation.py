@@ -225,6 +225,7 @@ class Simulation(object):
         mpb_call_str = defaults.mpb_call % dict(num_procs=num_processors)
 
         with open(self.out_file, 'w') as outputFile:
+            log.info("Using MPB " + defaults.mpbversion)
             log.info("Running the MPB-computation using the following "
                      "call:\n" +
                 " ".join([mpb_call_str, self.ctl_file]))
@@ -587,11 +588,11 @@ class Simulation(object):
                     # minimum amount of bands all simulations share:
                     numbands = float('inf')
                     for folder in project_bands_list:
+                        jobname = path.basename(path.normpath(folder))
+                        filename = path.join(
+                            folder,
+                            jobname + '_' + mode + '_ranges.csv')
                         try:
-                            jobname = path.basename(path.normpath(folder))
-                            filename = path.join(
-                                folder,
-                                jobname + '_' + mode + '_ranges.csv')
                             rng = np.loadtxt(filename, delimiter=',')
                             if rng.shape[1] != 2:
                                 log.warning(
