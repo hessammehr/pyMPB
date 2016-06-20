@@ -301,7 +301,7 @@ class BandPlotter:
             # but only remove y-padding if y-data must be cropped:
             self._ax.set_ylim(self._miny, self._maxy)
 
-    def add_band_gap_polygon(
+    def add_filled_polygon(
             self, points, color=None, alpha=0.35,
             gap_text=defaults.default_gaptext):
         """Add a band gap polygon to the current subplot.
@@ -360,7 +360,7 @@ class BandPlotter:
 
         if light_line is None:
             # add a rectangle not clipped by light line:
-            self.add_band_gap_polygon(
+            self.add_filled_polygon(
                 points=[(0, from_freq), (rightindex, from_freq),
                         (rightindex, to_freq), (0, to_freq)],
                 color=color,
@@ -431,7 +431,7 @@ class BandPlotter:
                             light_line[i - 1], light_line[i], from_freq),
                         from_freq))
                     # Add the polygon to the plot:
-                    self.add_band_gap_polygon(
+                    self.add_filled_polygon(
                         points=points,
                         color=color,
                         alpha=alpha)
@@ -449,10 +449,47 @@ class BandPlotter:
                 points.append((rightindex, from_freq))
 
             # Add the polygon to the plot:
-            self.add_band_gap_polygon(
+            self.add_filled_polygon(
                 points=points,
                 color=color,
                 alpha=alpha)
+
+
+    def add_continuum_bands(
+            self, data, color=None, alpha=0.75):
+        """Add continuum (projected) bands to the current subplot.
+
+        :param data: a (num_k-vecs x 2*num_conti_bands)-array. The 1st
+        axis has exactly the same size as there are k-vectors in this
+        plot. The 2nd axis' length is even: the first column holds the
+        minimum frequencies of the first continuum band, the second line
+        its maximum frequencies, and so on for more bands.
+        :param color: If this is None (default), use the color of the last
+        plotted bands, otherwise, use this color.
+        :param alpha: The opacity of the bands.
+
+        """
+        # TODO: prevent overlapping of multiple conti bands polygons
+
+        if (not data.shape[0] == len(self._x_data) or
+            not data.shape[1] % 2 == 0):
+            log.warning('data supplied to bandplotter.add_continuum_bands '
+                        'is malformed.')
+            return
+        numbands = data.shape[1] // 2
+        for i in range(numbands):
+            # create a polygon for each conti band:
+            pts = []
+            for k, x in enumerate(self._x_data):
+                pts.append((x, data[k, 2 * i]))
+            for k, x in reversed(list(enumerate(self._x_data))):
+                pts.append((x, data[k, 2 * i + 1]))
+            # add a rectangle not clipped by light line:
+            self.add_filled_polygon(
+                points=pts,
+                color=color,
+                alpha=alpha)
+
 
     def fill_between_bands(
             self, bandfrom, bandto, color = '#7f7fff', alpha=0.5):

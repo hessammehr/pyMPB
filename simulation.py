@@ -18,6 +18,7 @@ import sys
 from shutil import rmtree
 import subprocess as sp
 import re
+import numpy as np
 import defaults
 import graphics
 from datetime import datetime
@@ -456,7 +457,8 @@ class Simulation(object):
                                defaults.temporary_h5_folder,
                                fname))
         return 0
-    
+
+
     def _export_data_helper(self, output_buffer, dataname):
         """grep for *dataname* in  *output_buffer* and save the data following
         it to a .csv file.
@@ -484,8 +486,21 @@ class Simulation(object):
         else:
             log.info("No {0} data found in output".format(dataname))
 
-    def post_process(self, convert_field_patterns=True):
-        # make csv files for all band information:
+
+    def post_process(
+            self, convert_field_patterns=True, project_bands_list=None):
+        """Make csv files for all band information. Make png of epsilon
+        file.
+        :param convert_field_patterns: If True, also make pngs of all
+        fields exported during simulation.
+        :param project_bands_list: a list of simulation folders
+        (strings), with previously run simulations containing the bands
+        to be projected. The list must have exactly one entry for each
+        k-vector of the current simulation. Or leave this unspecified,
+        if there are no bands to be projected.
+        :return: None
+        """
+        #
         try:
             output_file = open(self.out_file,'r')
         except IOError:
@@ -523,6 +538,79 @@ class Simulation(object):
             datanames = ['freqs', 'velocity', 'dos', 'yparity', 'zparity']
             for dataname in datanames:
                 self._export_data_helper(output_buffer, mode + dataname)
+
+            # Save band frequency ranges to csv, from the just generated
+            # freqs.csv. Needed e.g. if these bands are going to be
+            # projected in another simulation.
+            fnamebase = path.join(
+                self.workingdir,
+                '{0}_{1}{{0}}.csv'.format(self.jobname, mode))
+            data = np.loadtxt(
+                fnamebase.format('freqs'), delimiter=',', skiprows=1)
+            assert (self.numbands == data.shape[1] - 5)
+            bandsmax = np.amax(data[:, 5:], axis=0)
+            bandsmin = np.amin(data[:, 5:], axis=0)
+            # format is %.6f, because MPB only outputs so many digits:
+            np.savetxt(
+                fnamebase.format('_ranges'),
+                np.array([bandsmin, bandsmax]).transpose(),
+                fmt='%.6f', delimiter=', ')
+
+            # if project_bands_list is supplied, a csv with the continuum
+            # band ranges is created:
+            if project_bands_list:
+                if (self.kspace.count_interpolated() !=
+                        len(project_bands_list)):
+                    log.warning(
+                        'project_bands_list supplied to '
+                         'Simulation.postprocess does not have the same '
+                         'amount of entries than there are k-vectors in '
+                         'this simulation.')
+                else:
+                    # load all ranges files:
+                    ranges = []
+                    # minimum amount of bands all simulations share:
+                    numbands = float('inf')
+                    for folder in project_bands_list:
+                        try:
+                            jobname = path.basename(path.normpath(folder))
+                            filename = path.join(
+                                folder,
+                                jobname + '_' + mode + '_ranges.csv')
+                            rng = np.loadtxt(filename, delimiter=',')
+                            if rng.shape[1] != 2:
+                                log.warning(
+                                    'file "{0}" is malformed.'.format(
+                                        filename) +
+                                    'Will not handle projected bands.'
+                                )
+                                break
+                            ranges.append(rng)
+                            numbands = min(rng.shape[0], numbands)
+                        except IOError:
+                            # file not found
+                            log.warning(
+                                'entry "{0}" in project_bands_list supplied '
+                                'to Simulation.postprocess does not exist. '
+                                'Will not handle projected bands.'.format(
+                                    filename
+                                )
+                            )
+                            break
+                    # only continue if we did not abort because we could
+                    # not load a file:
+                    if len(ranges) == len(project_bands_list):
+                        # make all the same size and flat (alternating
+                        # min/max):
+                        for i in range(len(ranges)):
+                            ranges[i] = (ranges[i][:numbands]).flatten()
+                        contibands = np.array(ranges)
+                        # format is %.6f, because MPB only outputs so many digits:
+                        np.savetxt(
+                            fnamebase.format('_projected'),
+                            contibands,
+                            fmt='%.6f', delimiter=', ')
+
 
         if not path.exists(self.eps_file) and path.isfile(self.eps_file + '~'):
             # The epsilon.h5 file was renamed before to mark it as temporary.
@@ -577,6 +665,7 @@ class Simulation(object):
                 jobname, mode, self.kspace, band, filled=filled, levels=levels,
                 lines=lines, labeled=labeled, legend=legend)
 
+
     def draw_bands(
             self, title='', crop_y=True,
             x_axis_hint=defaults.default_x_axis_hint,
@@ -622,18 +711,31 @@ class Simulation(object):
         The band data is loaded from previously saved .csv files, usually
         done in post_process().
 
+        If a .csv file with projected band data exists, projected bands
+        will be plotted, band gaps not.
+
         TODO: add subplots for each file in argument 'comparison_files=[]'
 
         """
         jobname = path.join(self.workingdir, self.jobname)
+        # see if projected bands were calculated:
+        projected = False not in [
+            path.isfile(jobname + '_{0}_projected.csv'.format(mode)) for
+            mode in self.modes]
         # draw data with matplotlib in one subplot:
-        plotter = graphics.draw_bands(jobname, self.modes,
-                                      x_axis_hint=x_axis_hint,
-                                      title=title,
-                                      crop_y=crop_y,
-                                      light_cone=self.geometry.is3D)
+        plotter = graphics.draw_bands(
+            jobname,
+            self.modes,
+            x_axis_hint=x_axis_hint,
+            title=title,
+            crop_y=crop_y,
+            band_gaps=not projected,
+            light_cone=self.geometry.is3D,
+            projected_bands=projected
+        )
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
+
         if save:
             filename = jobname + '_bands.pdf'
             log.info('saving band diagram to file %s' % filename)

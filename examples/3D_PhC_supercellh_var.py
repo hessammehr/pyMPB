@@ -71,7 +71,7 @@ def main():
             bands_title_appendix=', supercell thickness={0:02.1f}'.format(step))
         
         if not sim:
-            log.error('an error occured during simulation. See the .out file')
+            log.error('an error occurred during simulation. See the .out file')
             return
 
 

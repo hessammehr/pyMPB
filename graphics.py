@@ -130,7 +130,8 @@ def draw_bandstructure_2D(
 
 def draw_bands(
         jobname, modes, x_axis_hint=default_x_axis_hint,
-        custom_plotter=None, title='', crop_y=True, light_cone=False):
+        custom_plotter=None, title='', crop_y=True,
+        band_gaps=True, light_cone=False, projected_bands=False):
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
@@ -172,8 +173,16 @@ def draw_bands(
     known. Alternatively, a numeric value of *crop_y* denotes the upper
     frequency value where the plot will be cropped.
 
-    If *light_cone*, add a light cone and crop the bandgaps at the light
-    line.
+    If *band_gaps* is True, draw the band gaps (with colored boxes).
+
+    If *light_cone* is True, add a light cone and crop the bandgaps at
+    the light line.
+
+    If *projected_bands* is True, add bands that span a range of
+    frequencies to the plot. Bandgaps are not drawn in this case. The
+    data needed will be read from previously saved .csv files
+    (filenames: [ jobname* + '_' + *mode* + '_projected.csv' for mode in
+    modes]).
 
     """
 
@@ -266,14 +275,19 @@ def draw_bands(
             formatstr='o-',
             x_axis_formatter=x_axis_formatter,
             label=mode.upper(), crop_y=crop_y)
-        if light_cone:
-            gapbands = get_gap_bands(data[:, 5:], light_line=data[:, 4])
-        else:
-            gapbands = get_gap_bands(data[:, 5:])
-        for band in gapbands:
-            plotter.add_band_gap_rectangle(
-                band[1], band[2],
-                light_line=data[:,4] if light_cone else None)
+        if projected_bands:
+            fname = '{0}_{1}_projected.csv'.format(jobname, mode)
+            projdata = loadtxt(fname, delimiter=',')
+            plotter.add_continuum_bands(projdata)
+        if band_gaps:
+            if light_cone:
+                gapbands = get_gap_bands(data[:, 5:], light_line=data[:, 4])
+            else:
+                gapbands = get_gap_bands(data[:, 5:])
+            for band in gapbands:
+                plotter.add_band_gap_rectangle(
+                    band[1], band[2],
+                    light_line=data[:,4] if light_cone else None)
 
     if light_cone:
         plotter.add_light_cone()

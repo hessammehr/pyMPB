@@ -57,7 +57,7 @@ def main():
             convert_field_patterns=True)
         
         if not sim:
-            log.error('an error occured during simulation. See the .out file')
+            log.error('an error occurred during simulation. See the .out file')
             return
     
         # load zeven mode band data:

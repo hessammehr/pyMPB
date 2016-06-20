@@ -24,8 +24,10 @@ from geometry import Geometry
 from kspace import KSpaceTriangular, KSpace
 from objects import Dielectric, Rod, Block
 import defaults
+import log
 from utility import do_runmode
-from os import path
+from os import path, makedirs
+import numpy as np
 
 
 def TriHoles2D(
@@ -35,7 +37,7 @@ def TriHoles2D(
         save_field_patterns=True, convert_field_patterns=True,
         containing_folder='./',
         job_name_suffix='', bands_title_appendix='',
-        custom_k_space=None):
+        custom_k_space=None, modes=['te', 'tm']):
     """Create a 2D MPB Simulation of a triangular lattice of holes.
 
     :param material: can be a string (e.g. SiN,
@@ -72,6 +74,8 @@ def TriHoles2D(
     :param custom_k_space: By default, KSpaceTriangular with
     k_interpolation interpolation steps are used. Provide any KSpace
     object here to customize this. k_interpolation will then be ignored.
+    :param modes: a list of modes to run. Possible are 'te' and 'tm'.
+    Default: both
     :return: the Simulation object
 
     """
@@ -99,6 +103,15 @@ def TriHoles2D(
     else:
         poi = []
 
+    runcode = ''
+    for mode in modes:
+        if mode == 'te':
+            defaultbandfunc = defaults.default_band_func_te
+        else:
+            defaultbandfunc = defaults.default_band_func_tm
+        runcode += ('(run-%s %s)\n' % (mode, defaultbandfunc(poi)) +
+                    '(print-dos 0 1.2 121)\n\n')
+
     jobname = 'TriHoles2D_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
 
@@ -112,10 +125,7 @@ def TriHoles2D(
         initcode=defaults.default_initcode +
                  '(set! default-material {0})'.format(str(mat)),
         postcode='',
-        runcode='(run-tm %s)\n' % defaults.default_band_func_tm(poi) +
-                '(print-dos 0 1.2 121)\n\n' +
-                '(run-te %s)\n' % defaults.default_band_func_te(poi) +
-                '(print-dos 0 1.2 121)\n\n',
+        runcode=runcode,
         work_in_subfolder=path.join(
             containing_folder, jobname + job_name_suffix),
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
@@ -239,10 +249,10 @@ def TriHolesSlab3D(
 
 
 def TriHoles2D_yWaveguide(
-        material, radius, numbands=8, k_steps=17,
+        material, radius, mode='te', numbands=8, k_steps=17,
         supercell_x=5, resolution=32, mesh_size=7,
         runmode='sim', num_processors=2,
-        projected_bands_folder='./',
+        projected_bands_folder='../projected_bands_repo',
         save_field_patterns=False, convert_field_patterns=False,
         job_name_suffix='', bands_title_appendix=''):
     """Create a 2D MPB Simulation of a triangular lattice of holes, with
@@ -251,10 +261,15 @@ def TriHoles2D_yWaveguide(
 
     The simulation is done with a rectangular super cell.
 
+    Before the waveguide simulation, additional simulations of the
+    unperturbed structure will be run for projected bands data, if these
+    simulations where not run before.
+
     :param material: can be a string (e.g. SiN,
     4H-SiC-anisotropic_c_in_z; defined in data.py) or just the epsilon
     value (float)
     :param radius: the radius of holes in units of the lattice constant
+    :param mode: the mode to run. Possible are 'te' and 'tm'.
     :param numbands: number of bands to calculate
     :param k_steps: number of k_y steps between 0 and 0.5 to simulate
     :param supercell_x: the length of the supercell perpendicular to the
@@ -289,6 +304,89 @@ def TriHoles2D_yWaveguide(
     """
     mat = Dielectric(material)
 
+    # first, make sure all data for projected bands exist, otherwise
+    # start their simulations.
+
+    unperturbed_jobname = 'TriHoles2D_{0}_r{1:03.0f}'.format(
+        mat.name, radius * 1000)
+    # look here for old simulations, and place new ones there:
+    repo = path.abspath(
+        path.join(
+            path.curdir,
+            projected_bands_folder,
+            unperturbed_jobname
+        )
+    )
+    # create path if not there yet:
+    if not path.exists(path.abspath(repo)):
+        makedirs(path.abspath(repo))
+    # these ky points will be simulated::
+    ky_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+
+    # In the triangular lattice, in the basis of its reciprocal basis
+    # vectors, this is the K' point, i.e. die boundary of the first
+    # brillouin zone in the rectangular lattice, onto which we need to
+    # project (see also : Steven G. Johnson et al., "Linear waveguides
+    # in photonic-crystal slabs", Phys. Rev. B, Vol. 62, Nr.12,
+    # 8212-8222 (2000); page 8216 & Fig. 8):
+    rectBZ_K = np.array((0.25, -0.25))
+    # the M point in the triangular lattice reciprocal basis, which points
+    # along +X:
+    # (note: if k_y is greater than 1/3, we leave the 1st BZ in +x
+    # direction. But this is OK and we calculate it anyway, because it
+    # does not change the projection. If we want to optimize
+    # calculation time some time, we could limit this.)
+    triBZ_M = np.array((0.5, 0.5))
+
+    # This list will be forwarded later to this defect simulation's
+    # post-process. It contains the folder paths of unperturbed
+    # simulations for each k-vec of this simulation:
+    project_bands_list = []
+
+    # now, see if we need to simulate:
+    for ky in ky_points:
+        jobname_suffix = '_ky{0:06.0f}'.format(ky*1e6)
+        jobname = unperturbed_jobname + jobname_suffix
+        project_bands_list.append(path.join(repo, jobname))
+        range_file_name = path.join(
+            repo, jobname, jobname + '_' + mode + '_ranges.csv')
+        if not path.isfile(range_file_name):
+            # does not exist, so start simulation:
+            log.info('unperturbed structure not yet simulated at '
+                     'k_y={0}. Running now...'.format(ky))
+            kspace = KSpace(
+                points_list=[
+                    rectBZ_K * ky * 2,
+                    rectBZ_K * ky * 2 + triBZ_M
+                ],
+                k_interpolation=15,)
+
+            sim = TriHoles2D(
+                    material=material,
+                    radius=radius,
+                    custom_k_space=kspace,
+                    numbands=defaults.num_projected_bands,
+                    resolution=resolution,
+                    mesh_size=mesh_size,
+                    runmode='sim',
+                    num_processors=num_processors,
+                    containing_folder=repo,
+                    save_field_patterns=False,
+                    convert_field_patterns=False,
+                    job_name_suffix=jobname_suffix,
+                    bands_title_appendix=', at ky={0:0.3f}'.format(ky),
+                    modes=[mode]
+            )
+
+            if not sim:
+                log.error(
+                    'an error occurred during simulation of unperturbed '
+                    'structure. See the .out file in {0}'.format(path.join(
+                        repo, jobname
+                    ))
+                )
+                return
+
     # make it odd:
     if supercell_x % 2 == 0:
         supercell_x += 1
@@ -308,7 +406,7 @@ def TriHoles2D_yWaveguide(
                 y=0,
                 material='air',
                 radius=radius)
-            for cx in range(-scxh, 0) + range(1, scxh + 1)] +
+            for cx in list(range(-scxh, 0)) + list(range(1, scxh + 1))] +
 
             # perimeter holes:
             [Rod(
@@ -323,7 +421,6 @@ def TriHoles2D_yWaveguide(
     kspace = KSpace(
         points_list=[(0, 0, 0), (0, 0.5, 0)],
         k_interpolation=k_steps - 2,
-    #    point_labels=['Gamma', 'M']
     )
 
     # points of interest: (output mode patterns at these points)
@@ -335,6 +432,11 @@ def TriHoles2D_yWaveguide(
     jobname = 'TriHoles2D_W1_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
 
+    if mode == 'te':
+        defaultbandfunc = defaults.default_band_func_te
+    else:
+        defaultbandfunc = defaults.default_band_func_tm
+
     sim = Simulation(
         jobname=jobname + job_name_suffix,
         geometry=geom,
@@ -345,9 +447,7 @@ def TriHoles2D_yWaveguide(
         initcode=defaults.default_initcode +
                  '(set! default-material {0})'.format(str(mat)),
         postcode='',
-        runcode='(run-tm %s)\n' % defaults.default_band_func_tm(poi) +
-                '(print-dos 0 1.2 121)\n\n' +
-                '(run-te %s)\n' % defaults.default_band_func_te(poi) +
+        runcode='(run-%s %s)\n' % (mode, defaultbandfunc(poi)) +
                 '(print-dos 0 1.2 121)\n\n',
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
@@ -362,6 +462,7 @@ def TriHoles2D_yWaveguide(
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
         field_pattern_plot_k_slice=(0,2),
-        x_axis_hint=5
+        x_axis_hint=5,
+        project_bands_list=project_bands_list
     )
 

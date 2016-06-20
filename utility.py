@@ -541,65 +541,71 @@ def distribute_pattern_images(
 def do_runmode(
         sim, runmode, num_processors, bands_plot_title, plot_crop_y,
         x_axis_hint, convert_field_patterns, field_pattern_plot_k_slice,
-        field_pattern_plot_filetype='pdf'):
+        field_pattern_plot_filetype='pdf', project_bands_list=None):
     """Start a job on the sim object, according to runmode.
 
-    Keyword arguments:
-
-    sim              -- the Simulation object
-
-    runmode          -- can be one of the following:
+    :param sim: the Simulation object
+    :param runmode: can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : just write the ctl file to disk
         'sim'    : run the simulation and do all postprocessing
-        'postpc' : do all postprocessing; simulation should have run before!
-        'display': display all pngs done during postprocessing. This is the
-                   only mode that is interactive.
+        'postpc' : do all postprocessing; simulation should have run
+                   before!
+        'display': display all pngs done during postprocessing. This is
+                   the only mode that is interactive.
+    :param num_processors:
+        the number of processors used for the simulation.
+    :param bands_plot_title:
+        the title of the band diagrams made in post_processing.
+    :param plot_crop_y:
+        the band diagrams are automatically cropped before the last band
+        if plot_crop_y is True, alternatively use plot_crop_y to specify
+        the max. y-value where the plot will be cropped.
+    :param x_axis_hint:
+        gives a hint on which kind of ticks and labels should be shown
+        on the x-axis of the band diagram and provides the data needed.
+        Can be one of the following:
+        - integer number:
+            The axis' labels will be the 3D k-vectors. The number
+            denotes the number of major ticks and labels distributed on
+            the axis.
+        - list([integer, format-string]):
+            Same as above, but the labels are formatted with the
+            format-string - this gives the possibility to only show one
+            of the three vector components, e.g. the string "{2}" to
+            only show the k-vector's z-component. The axis title will be
+            inferred from the format-string.
+        - KSpace object:
+            This must be a KSpace object created with point_labels.
+            These labels usually denote the high symmetry or crititical
+            points, and they will be shown on the axis.
+        - CustomAxisFormatter object:
+            This gives the possibility to completely customize the
+            x-axis' tick positions, tick labels and axis label. If the
+            CustomAxisFormatter's hover data have not been set, it will
+            be set here with the k-vectors read from the simulation
+            results.
+    :param convert_field_patterns:
+        indicates whether field pattern h5 files should be converted to
+        png (only when postprocessing). If this is true, a diagram with
+        all patterns will be created with field patterns for all bands
+        and for the k-vectors included in field_pattern_plot_k_slice
+    :param field_pattern_plot_k_slice:
+        Which k-vecs to include in the field pattern diagram. This slice
+        is a tuple with starting and ending (inclusive) index of the
+        k-vectors where the patterns were exported during simulation,
+        e.g. (0, 2) for the first, second and third exported k-vector.
+    :param field_pattern_plot_filetype:
+        The file extension to where the field pattern plot will be
+        saved, Default: 'pdf'
+    :param project_bands_list:
+        a list of simulation folders (strings), with previously run
+        simulations containing the bands to be projected. The list must
+        have exactly one entry for each k-vector of the current
+        simulation. Or leave this unspecified, if there are no bands to
+        be projected.
+    :return: the simulation object
 
-    num_processors   -- the number of processors used for the simulation.
-    bands_plot_title -- the title of the band diagrams made in post_processing.
-    plot_crop_y      -- the band diagrams are automatically cropped before the
-                        last band if plot_crop_y is True, alternatively use
-                        plot_crop_y to specify the max. y-value where the plot
-                        will be cropped.
-    convert_field_patterns --
-                        indicates whether field pattern h5 files should be
-                        converted to png (only when postprocessing). If this
-                        is true, a diagram with all patterns will be created
-                        with field patterns for all bands and for the k-vectors
-                        included in field_pattern_plot_k_slice
-    field_pattern_plot_k_slice --
-                        Which k-vecs to include in the field pattern diagram.
-                        This slice is a tuple with starting and ending
-                        (inclusive) index of the k-vectors where the patterns
-                        were exported during simulation, e.g. (0, 2) for the
-                        first, second and third exported k-vector.
-    x_axis_hint      -- gives a hint on which kind of ticks and labels should
-                        be shown on the x-axis of the band diagram and provides
-                        the data needed.
-                        Can be one of the following:
-                        - integer number:
-                            The axis' labels will be the 3D k-vectors. The
-                            number denotes the number of major ticks and labels
-                            distributed on the axis.
-                        - list([integer, format-string]):
-                            Same as above, but the labels are formatted with
-                            the format-string - this gives the possibility to
-                            only show one of the three vector components, e.g.
-                            the string "{2}" to only show the k-vector's
-                            z-component. The axis title will be inferred from
-                            the format-string.
-                        - KSpace object:
-                            This must be a KSpace object created with
-                            point_labels. These labels usually denote the high
-                            symmetry or crititical points, and they will be
-                            shown on the axis.
-                        - CustomAxisFormatter object:
-                            This gives the possibility to completely customize
-                            the x-axis' tick positions, tick labels and axis
-                            label. If the CustomAxisFormatter's hover data have
-                            not been set, it will be set here with the
-                            k-vectors read from the simulation results.
     """
     if not isinstance(runmode, str):
         return sim
@@ -614,7 +620,10 @@ def do_runmode(
         runmode = 'postpc'
     if runmode.startswith('p'):  # postprocess
         # create csv files of data and pngs:
-        sim.post_process(convert_field_patterns=convert_field_patterns)
+        sim.post_process(
+            convert_field_patterns=convert_field_patterns,
+            project_bands_list=project_bands_list
+        )
         # save band diagram as pdf&png:
         sim.draw_bands(
             title=bands_plot_title, crop_y=plot_crop_y,

@@ -16,7 +16,10 @@ from __future__ import division, print_function
 
 default_resolution = 32
 default_mesh_size = 3
-default_numbands = 2
+default_numbands = 8
+# the number of bands to calculate if calculation is only supposed to be used
+# for projection of bands:
+num_projected_bands = 4
 default_k_interpolation = 3
 default_initcode = (';load module for calculating local dos:\n'
                     '(define dosmodule (%search-load-path "dosv2.scm"))\n'
@@ -53,7 +56,7 @@ default_band_func_te = lambda poi : (
 
 
 #mpb_call = 'mpb'
-mpb_call = 'mpirun -np %(num_procs)s mpb-mpi'
+mpb_call = 'mpirun -np %(num_procs)s mpbi-mpi'
 
 # use -T if we run the simulation with mpb-mpi:
 mpbdata_call = ('mpb-data -T -rn%(resolution)s '
