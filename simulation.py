@@ -307,13 +307,18 @@ class Simulation(object):
         if not filenames:
             return 0
 
-        # prepare temporary folder:
-        # (the h5 files will be moved here after conversion)
-        if not path.isdir(
-            path.join(self.workingdir, defaults.temporary_h5_folder)):
+        if not defaults.delete_h5_after_postprocessing:
+            # prepare temporary folder:
+            # (the h5 files will be moved here after conversion)
+            if not path.isdir(path.join(
+                        self.workingdir,
+                        defaults.temporary_h5_folder)):
                 log.info(
-                    "creating subdirectory: " + defaults.temporary_h5_folder)
-                mkdir(path.join(self.workingdir, defaults.temporary_h5_folder))
+                    "creating subdirectory: " +
+                    defaults.temporary_h5_folder)
+                mkdir(path.join(
+                    self.workingdir,
+                    defaults.temporary_h5_folder))
 
         log.info("Will now convert following files to png: %s" % filenames)
         log.info("On all these files, mpb-data will be called with the "
@@ -350,8 +355,11 @@ class Simulation(object):
             else:
                 log.info(defaults.fieldh5topng_call_2D % dct)
                 log.info(defaults.fieldh5topng_call_2D_no_ovl % dct)
-        log.info("and finally move the h5 file to temporary folder " + 
-                            defaults.temporary_h5_folder)
+        if defaults.delete_h5_after_postprocessing:
+            log.info("and finally delete the h5 file.")
+        else:
+            log.info("and finally move the h5 file to temporary folder " +
+                     defaults.temporary_h5_folder)
 
         # Build the regular expression pattern for parsing filenames:
 
@@ -410,6 +418,7 @@ class Simulation(object):
             # if multiple tiles are exported.
             log.debug("calling: {0}".format(callstr))
             if not sp.call(callstr.split(), cwd=self.workingdir):
+                #log.debug("success")
                 # no error, continue:
                 # show some progress:
                 print('.', end='')
@@ -442,14 +451,20 @@ class Simulation(object):
                     for s in callstr:
                         if not retcode:
                             log.debug("calling: {0}".format(s))
-                            retcode = retcode or sp.call(s.split(), 
-                                                         cwd=self.workingdir)
-                if retcode:
-                    return retcode
+                            retcode = retcode or sp.call(
+                                s.split(),
+                                cwd=self.workingdir)
+                            if retcode:
+                                log.error('error calling {0}'.format(s))
             else:
+                log.error('error calling {0}'.format(callstr))
                 return 1
 
             if not retcode:
+                if defaults.delete_h5_after_postprocessing:
+                    remove(path.join(self.workingdir, fname))
+                    log.debug('deleted {0}'.format(fname))
+                else:
                     # move h5 file to temporary folder:
                     rename(path.join(self.workingdir, fname), 
                            path.join(
@@ -628,14 +643,21 @@ class Simulation(object):
             remove(path.join(self.workingdir, defaults.temporary_epsh5))
         if path.isfile(path.join(self.workingdir, defaults.temporary_h5)):
             remove(path.join(self.workingdir, defaults.temporary_h5))
-        # rename the epsilon.h5 file so my system knows it is a temporary file:
-        if path.isfile(self.eps_file + '~'):
-            # but delete old temporary file first:
-            remove(self.eps_file + '~')
-        if path.isfile(self.eps_file):
-            rename(self.eps_file, self.eps_file + '~')
-            log.info("renamed {0} to {1}".format(
-                self.eps_file, self.eps_file + '~'))
+        if not defaults.delete_h5_after_postprocessing:
+            # rename the epsilon.h5 file so my system knows it is a
+            # temporary file:
+            if path.isfile(self.eps_file + '~'):
+                # but delete old temporary file first:
+                remove(self.eps_file + '~')
+            if path.isfile(self.eps_file):
+                rename(self.eps_file, self.eps_file + '~')
+                log.info("renamed {0} to {1}".format(
+                    self.eps_file, self.eps_file + '~'))
+        else:
+            # delete all .h5 files:
+            if path.isfile(self.eps_file):
+                remove(self.eps_file)
+                log.info("deleted {0}".format(self.eps_file))
         return
 
     def display_epsilon(self):

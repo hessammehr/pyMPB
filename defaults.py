@@ -38,6 +38,9 @@ number_of_tiles_to_output = 3
 # Field patterns transformed to PNG will be placed in subfolders named
 # (field_output_folder_prefix + '_' + mode):
 field_output_folder_prefix = 'pngs'
+# specify wheter the rather big hdf5 files should be kept after they
+# were converted to png files:
+delete_h5_after_postprocessing = True
 
 # poi: k-points of interest:
 default_band_func_tm = lambda poi : (
