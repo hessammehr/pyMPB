@@ -37,7 +37,7 @@ def TriHoles2D(
         save_field_patterns=True, convert_field_patterns=True,
         containing_folder='./',
         job_name_suffix='', bands_title_appendix='',
-        custom_k_space=None, modes=['te', 'tm']):
+        custom_k_space=None, modes=('te', 'tm')):
     """Create a 2D MPB Simulation of a triangular lattice of holes.
 
     :param material: can be a string (e.g. SiN,
@@ -106,11 +106,14 @@ def TriHoles2D(
     runcode = ''
     for mode in modes:
         if mode == 'te':
-            defaultbandfunc = defaults.default_band_func_te
+            outputfunc = ' '.join(defaults.output_funcs_te)
         else:
-            defaultbandfunc = defaults.default_band_func_tm
-        runcode += ('(run-%s %s)\n' % (mode, defaultbandfunc(poi)) +
-                    '(print-dos 0 1.2 121)\n\n')
+            outputfunc = ' '.join(defaults.output_funcs_tm)
+        runcode += (
+            '(run-%s %s)\n' % (
+                mode, defaults.default_band_func(poi, outputfunc)
+            ) +
+            '(print-dos 0 1.2 121)\n\n')
 
     jobname = 'TriHoles2D_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
@@ -149,7 +152,8 @@ def TriHolesSlab3D(
         resolution=32, mesh_size=7, supercell_z=6,
         runmode='sim', num_processors=2,
         save_field_patterns=True, convert_field_patterns=True,
-        job_name_suffix='', bands_title_appendix=''):
+        job_name_suffix='', bands_title_appendix='',
+        modes=('zeven', 'zodd')):
     """Create a 3D MPB Simulation of a slab with a triangular lattice of
     holes.
 
@@ -184,6 +188,8 @@ def TriHolesSlab3D(
     jobname created automatically from the most important parameters.
     :param bands_title_appendix: will be added to the title of the bands
     diagram.
+    :param modes: a list of modes to run. Possible are 'zeven' and
+    'zodd'. Default: both
     :return: the Simulation object
 
     """
@@ -214,6 +220,18 @@ def TriHolesSlab3D(
     else:
         poi = []
 
+    runcode = ''
+    for mode in modes:
+        if mode == 'zeven':
+            outputfunc = ' '.join(defaults.output_funcs_te)
+        else:
+            outputfunc = ' '.join(defaults.output_funcs_tm)
+        runcode += (
+            '(run-%s %s)\n' % (
+                mode, defaults.default_band_func(poi, outputfunc)
+            ) +
+            '(print-dos 0 1.2 121)\n\n')
+
     jobname = 'TriHolesSlab_{0}_r{1:03.0f}_t{2:03.0f}'.format(
                     mat.name, radius * 1000, thickness * 1000)
 
@@ -226,10 +244,7 @@ def TriHolesSlab3D(
         mesh_size=mesh_size,
         initcode=defaults.default_initcode,
         postcode='',
-        runcode='(run-zodd %s)\n' % defaults.default_band_func_tm(poi) +
-                '(print-dos 0 1.2 121)\n\n' +
-                '(run-zeven %s)\n' % defaults.default_band_func_te(poi) +
-                '(print-dos 0 1.2 121)\n\n',
+        runcode=runcode,
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
     draw_bands_title = ('Hex. PhC slab; '
@@ -253,7 +268,8 @@ def TriHoles2D_yWaveguide(
         supercell_x=5, resolution=32, mesh_size=7,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
-        save_field_patterns=False, convert_field_patterns=False,
+        save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
+        convert_field_patterns=False,
         job_name_suffix='', bands_title_appendix=''):
     """Create a 2D MPB Simulation of a triangular lattice of holes, with
     a waveguide along the nearest neighbor direction, i.e. Gamma->K
@@ -290,8 +306,13 @@ def TriHoles2D_yWaveguide(
     contain the simulations of the unperturbed PhC, which is needed for
     the projections along k_x. If the folder contains simulations run
     before, their data will be reused.
-    :param save_field_patterns: indicates whether field pattern h5 files
-    are generated during the simulation (at points of high symmetry)
+    :param save_field_patterns_kvecs: a list of k-vectors (3-tuples),
+    which indicates where field pattern h5 files are generated during
+    the simulation (only at bands in save_field_patterns_bandnums)
+    :param save_field_patterns_bandnums: a list of band numbers (int,
+    starting at 1), which indicates where field pattern h5 files are
+    generated during the simulation (only at k-vectors in
+    save_field_patterns_kvecs)
     :param convert_field_patterns: indicates whether field pattern h5
     files should be converted to png (only when postprocessing)
     :param job_name_suffix: Optionally specify a job_name_suffix
@@ -423,19 +444,47 @@ def TriHoles2D_yWaveguide(
         k_interpolation=k_steps - 2,
     )
 
-    # points of interest: (output mode patterns at these points)
-    if save_field_patterns:
-        poi = kspace.points()[0:-1]
-    else:
-        poi = []
-
     jobname = 'TriHoles2D_W1_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
 
     if mode == 'te':
-        defaultbandfunc = defaults.default_band_func_te
+        outputfuncs = defaults.output_funcs_te
     else:
-        defaultbandfunc = defaults.default_band_func_tm
+        outputfuncs = defaults.output_funcs_tm
+
+    if save_field_patterns_bandnums and save_field_patterns_kvecs:
+        runcode = (
+            ';function to determine whether an item x is member of list:\n'
+            '(define (member? x list)\n'
+            '    (cond (\n'
+            '        ;false if the list is empty:\n'
+            '        (null? list) #f )\n'
+            '        ;true if first item (car) equals x:\n'
+            '        ( (eqv? x (car list)) #t )\n'
+            '        ;else, drop first item (cdr) and make recursive call:\n'
+            '        ( else (member? x (cdr list)) )\n'
+            '    ))\n\n' +
+            '(define output-bands-list (list {0}))\n\n'.format(' '.join(
+                map(str, save_field_patterns_bandnums))) +
+            '(define (output-func bnum)\n'
+            '    (if (member? bnum output-bands-list)\n'
+            '        (begin\n' +
+            ''.join(12 * ' ' + '({0} bnum)\n'.format(func)
+                    for func in outputfuncs) +
+            '        )\n'
+            '    ))\n\n'
+            '(run-{0} {1})\n'.format(
+                mode,
+                defaults.default_band_func(
+                    save_field_patterns_kvecs, 'output-func')) +
+            '(print-dos 0 1.2 121)\n\n'
+        )
+    else:
+        runcode = ('(run-{0} {1})\n'.format(
+                mode,
+                defaults.default_band_func([], None)
+            ) +
+            '(print-dos 0 1.2 121)\n\n')
 
     sim = Simulation(
         jobname=jobname + job_name_suffix,
@@ -447,8 +496,7 @@ def TriHoles2D_yWaveguide(
         initcode=defaults.default_initcode +
                  '(set! default-material {0})'.format(str(mat)),
         postcode='',
-        runcode='(run-%s %s)\n' % (mode, defaultbandfunc(poi)) +
-                '(print-dos 0 1.2 121)\n\n',
+        runcode=runcode,
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
     draw_bands_title = (

@@ -83,28 +83,31 @@ number_of_tiles_to_output = 3
 field_output_folder_prefix = 'pngs'
 # specify wheter the rather big hdf5 files should be kept after they
 # were converted to png files:
-delete_h5_after_postprocessing = True
+delete_h5_after_postprocessing = not True
 
 
-def default_band_func_tm(poi):
-    """poi: k-points of interest"""
+def default_band_func(poi, outputfunc):
+    """Return a string which will be supplied to (run %s) as a bandfunction.
+
+    poi: k-points of interest, list of 3-tuples.
+    outputfunc: mpb outputfunction, e.g. 'output-efield-z'
+
+    """
     return (
         '\n    display-group-velocities' +
-        ''.join([(
-            '\n    (output-at-kpoint (vector3 %s) '
-            'fix-efield-phase output-efield-z)') %
-            ' '.join(str(c) for c in vec) for vec in poi]))
+        ''.join(
+            [
+                '\n    (output-at-kpoint (vector3 {0}) {1})'.format(
+                    ' '.join(str(c) for c in vec),
+                    outputfunc
+                )
+                for vec in poi
+            ]
+        )
+    )
 
-
-def default_band_func_te(poi):
-    """poi: k-points of interest"""
-    return (
-        '\n    display-group-velocities' +
-        ''.join([(
-            '\n    (output-at-kpoint (vector3 %s) '
-            'fix-efield-phase output-hfield-z)') %
-            ' '.join(str(c) for c in vec) for vec in poi]))
-
+output_funcs_te = ['fix-hfield-phase', 'output-hfield-z']
+output_funcs_tm = ['fix-efield-phase', 'output-efield-z']
 
 temporary_epsh5 = './temporary_eps.h5'
 temporary_h5 = './temporary.h5'

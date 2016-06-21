@@ -302,14 +302,13 @@ class BandPlotter:
             self._ax.set_ylim(self._miny, self._maxy)
 
     def add_filled_polygon(
-            self, points, color=None, alpha=0.35,
-            gap_text=defaults.default_gaptext):
+            self, points, color=None, alpha=0.35, gap_text=''):
         """Add a band gap polygon to the current subplot.
 
         Add a polygon with the vertices *points* (a list of 2-tuples).
         If *color* is None (default), use the color of the last plotted bands.
         *alpha* is the opacity of the rectangle.
-        If *gap_text* is a string (defaults.default_gaptext), adds the text
+        If *gap_text* is a string, adds the text
         (formatted with format(gapsize_in_percent)) to the center of the
         polygon.
 
@@ -364,7 +363,8 @@ class BandPlotter:
                 points=[(0, from_freq), (rightindex, from_freq),
                         (rightindex, to_freq), (0, to_freq)],
                 color=color,
-                alpha=alpha)
+                alpha=alpha,
+                gap_text=defaults.default_gaptext)
         else:
             # light line provided, crop bandgap box at light line:
 
@@ -434,7 +434,8 @@ class BandPlotter:
                     self.add_filled_polygon(
                         points=points,
                         color=color,
-                        alpha=alpha)
+                        alpha=alpha,
+                        gap_text=defaults.default_gaptext)
                     # And now empty the points list:
                     points = []
 
@@ -452,7 +453,8 @@ class BandPlotter:
             self.add_filled_polygon(
                 points=points,
                 color=color,
-                alpha=alpha)
+                alpha=alpha,
+                gap_text=defaults.default_gaptext)
 
 
     def add_continuum_bands(
