@@ -58,11 +58,15 @@ def main():
 
         ksteps = 17
 
+        # The bigger the unit cell, the more bands fold in below the
+        # waveguide band:
+        first_wg_band = 3 + 2 * (step - 1)
+
         sim = TriHoles2D_yWaveguide(
             material='SiN',
             radius=0.380,
             mode='te',
-            numbands=40,
+            numbands=first_wg_band + 5,
             k_steps=ksteps,
             supercell_x=step,
             resolution=32,
@@ -75,7 +79,8 @@ def main():
             #save_field_patterns_bandnums=[11, 12, 13, 22, 23],
             #convert_field_patterns=True
             job_name_suffix='_scx{0:02.0f}'.format(step),
-            bands_title_appendix=', supcell width={0:02.0f}'.format(step)
+            bands_title_appendix=', supcell width={0:02.0f}'.format(step),
+            plot_crop_y=0.6
         )
 
         if not sim:
@@ -98,12 +103,11 @@ def main():
         if prev_step_data is not None:
             sums = []
             # compare the waveguided bands:
-            for j in [0, 10, 11]:
+            for j in [0, first_wg_band - 1, first_wg_band, first_wg_band + 1]:
                 sums.append(
                     sum_of_squares(
                         prev_step_data[:, 5 + j],
-                        data[:, 5 + j],
-                        data[:, 4]
+                        data[:, 5 + j]
                     )
                 )
             with open("sum_of_squares.dat", "a") as f:

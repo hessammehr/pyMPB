@@ -47,21 +47,30 @@ def main():
 
     ksteps = 17
 
+    # width of the supercell:
+    supercell_x = 9
+
+    # The bigger the unit cell, the more bands fold in below the
+    # waveguide band:
+    first_wg_band = 3 + 2 * (supercell_x - 1)
+
     sim = TriHoles2D_yWaveguide(
         material='SiN',
-        radius=0.375,
+        radius=0.380,
         mode='te',
         numbands=40,
         k_steps=ksteps,
-        supercell_x=9,
+        supercell_x=supercell_x,
         resolution=32,
         mesh_size=7,
         runmode=mode,
-        num_processors=2,
+        num_processors=8,
         projected_bands_folder='./projected_bands_repo',
         save_field_patterns_kvecs=[
             (0, x, 0) for x in np.linspace(0, 0.5, num=ksteps)],
-        save_field_patterns_bandnums=[1, 2, 19, 20, 21],
+        save_field_patterns_bandnums=[
+            1, 2,
+            first_wg_band, first_wg_band + 1, first_wg_band + 2],
         convert_field_patterns=True
     )
 

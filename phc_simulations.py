@@ -270,7 +270,7 @@ def TriHoles2D_yWaveguide(
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
         convert_field_patterns=False,
-        job_name_suffix='', bands_title_appendix=''):
+        job_name_suffix='', bands_title_appendix='', plot_crop_y=False):
     """Create a 2D MPB Simulation of a triangular lattice of holes, with
     a waveguide along the nearest neighbor direction, i.e. Gamma->K
     direction.
@@ -320,6 +320,10 @@ def TriHoles2D_yWaveguide(
     jobname created automatically from the most important parameters.
     :param bands_title_appendix: will be added to the title of the bands
     diagram.
+    :param plot_crop_y:
+    the band diagrams are automatically cropped before the last band
+    if plot_crop_y is True, alternatively use plot_crop_y to specify
+    the max. y-value where the plot will be cropped.
     :return: the Simulation object
 
     """
@@ -500,16 +504,16 @@ def TriHoles2D_yWaveguide(
         clear_subfolder=runmode.startswith('s') or runmode.startswith('c'))
 
     draw_bands_title = (
-        '2D hex. PhC W1; {0}, radius={1:0.3f},'.format(
+        '2D hex. PhC W1; {0}, radius={1:0.3f}'.format(
             mat.name, geom.objects[0].radius) +
         bands_title_appendix)
 
     return do_runmode(
         sim, runmode, num_processors, draw_bands_title,
-        plot_crop_y=False, # no cropping
+        plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_slice=(0,2),
+        field_pattern_plot_k_slice=(0, k_steps-1),
         x_axis_hint=5,
         project_bands_list=project_bands_list
     )
