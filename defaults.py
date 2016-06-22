@@ -14,6 +14,7 @@
 
 from __future__ import division, print_function
 from subprocess import check_output
+import re
 
 
 #mpb_call = 'mpb'
@@ -45,16 +46,21 @@ display_png_call = 'display  %(files)s'
 mpbversion = 'n/a'
 for mpb in ['mbp', 'mpbi', 'mpb-mpi', 'mpbi-mpi']:
     try:
-        mpbversionline = check_output([mpb, '--version'])
+        mpbversionline = check_output(
+            [mpb, '--version'], universal_newlines=True)
+        # MPB made it hard to check the version. The line even changed
+        # in version 1.5. Look for first non-alpha part, this might be
+        # what we are looking for:
+        try:
+            mpbversion = re.search(
+                '\s([0-9.]*)[,\s]',
+                mpbversionline).groups()[0]
+        except AttributeError:
+            # did not find anything:
+            mpbversion = 'n/a'
         break
     except OSError:
         pass
-    # MPB made it hard to check the version. Look for first non-alpha
-    # part. This might be what we are looking for:
-    for part in mpbversionline.split():
-        if not part.isalpha():
-            mpbversion = part
-            break
 
 default_resolution = 32
 default_mesh_size = 3
@@ -64,7 +70,7 @@ default_numbands = 8
 num_projected_bands = 4
 default_k_interpolation = 3
 
-newmpb = mpbversion >= '1.5.0'
+newmpb = mpbversion >= '1.5'
 default_initcode = (
     ';load module for calculating local dos:\n'
     '(define dosmodule (%search-load-path "dosv2.scm"))\n'

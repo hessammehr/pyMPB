@@ -26,6 +26,7 @@ sys.path.append('../')
 import numpy as np
 from phc_simulations import TriHoles2D_yWaveguide
 import log
+import defaults
 
 
 def main():
@@ -33,6 +34,15 @@ def main():
         mode = sys.argv[1]
     else:
         mode = 'sim'
+
+    # monkey patching:
+    # (don't output multiple tiles along x)
+    defaults.mpbdata_call = (
+        'mpb-data -T -rn%(resolution)s '
+        '-y%(number_of_tiles_to_output)s '
+        '-o%(output_file)s '
+        '%(h5_file)s')
+    defaults.number_of_tiles_to_output=5
 
     ksteps = 17
 
@@ -50,7 +60,7 @@ def main():
         projected_bands_folder='./projected_bands_repo',
         save_field_patterns_kvecs=[
             (0, x, 0) for x in np.linspace(0, 0.5, num=ksteps)],
-        save_field_patterns_bandnums=[11, 12, 13, 22, 23],
+        save_field_patterns_bandnums=[1, 2, 11, 12, 13, 22, 23],
         convert_field_patterns=True
     )
 
