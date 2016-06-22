@@ -37,9 +37,10 @@ def main():
 
     # monkey patching:
     # (don't output multiple tiles along x)
+    # (x and y are switched because of -T)
     defaults.mpbdata_call = (
         'mpb-data -T -rn%(resolution)s '
-        '-y%(number_of_tiles_to_output)s '
+        '-x%(number_of_tiles_to_output)s '
         '-o%(output_file)s '
         '%(h5_file)s')
     defaults.number_of_tiles_to_output=5
@@ -50,9 +51,9 @@ def main():
         material='SiN',
         radius=0.375,
         mode='te',
-        numbands=24,
+        numbands=40,
         k_steps=ksteps,
-        supercell_x=5,
+        supercell_x=9,
         resolution=32,
         mesh_size=7,
         runmode=mode,
@@ -60,7 +61,7 @@ def main():
         projected_bands_folder='./projected_bands_repo',
         save_field_patterns_kvecs=[
             (0, x, 0) for x in np.linspace(0, 0.5, num=ksteps)],
-        save_field_patterns_bandnums=[1, 2, 11, 12, 13, 22, 23],
+        save_field_patterns_bandnums=[1, 2, 19, 20, 21],
         convert_field_patterns=True
     )
 
