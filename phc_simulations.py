@@ -289,7 +289,7 @@ def TriHoles2D_yWaveguide(
     :param numbands: number of bands to calculate
     :param k_steps: number of k_y steps between 0 and 0.5 to simulate
     :param supercell_x: the length of the supercell perpendicular to the
-    waveguide, in units of sqrt(3) times the lattice constant. It it is
+    waveguide, in units of sqrt(3) times the lattice constant. If it is
     not a odd number, one will be added.
     :param resolution: described in MPB documentation
     :param mesh_size: described in MPB documentation

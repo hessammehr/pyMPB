@@ -42,6 +42,7 @@ def main():
         mode='te',
         numbands=24,
         k_steps=ksteps,
+        supercell_x=5,
         resolution=32,
         mesh_size=7,
         runmode=mode,

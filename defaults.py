@@ -41,14 +41,20 @@ fieldh5topng_call_3D_no_ovl = ('h5topng -0z0 -S3 -Zcbluered '
                         '-o%(output_file_no_ovl)s %(h5_file)s')
 display_png_call = 'display  %(files)s'
 
-# find out mpb version:
+# get mpb version:
 mpbversion = 'n/a'
 for mpb in ['mbp', 'mpbi', 'mpb-mpi', 'mpbi-mpi']:
     try:
-        mpbversion = check_output([mpb, '--version']).split()[3]
+        mpbversionline = check_output([mpb, '--version'])
         break
     except OSError:
         pass
+    # MPB made it hard to check the version. Look for first non-alpha
+    # part. This might be what we are looking for:
+    for part in mpbversionline.split():
+        if not part.isalpha():
+            mpbversion = part
+            break
 
 default_resolution = 32
 default_mesh_size = 3
