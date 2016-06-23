@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 import log
+import defaults
 
 
 def occupancy_radius(occupancy, n, cell_area=1.0):
@@ -271,7 +272,8 @@ def strip_format_spec(format_str):
 
 def distribute_pattern_images(
         imgfolder, dstfile_prefix, dstfile_type='pdf', borderpixel=5,
-        only_k_slice=None, title='', show=False):
+        vertical_complex_pairs=defaults.field_dist_vertical_cmplx_comps,
+        only_k=None, title='', show=False):
     """Read all pngs (from MPB simulation) from *imgfolder* and distribute
     them according to bandnumber and k vector number.
 
@@ -285,12 +287,19 @@ def distribute_pattern_images(
     images will take up. (between r and i parts; border between bands
     and kvecs will take up 3*borderpixel)
 
-    Specify *only_k_slice* to limit the k-vecs to be included in the
-    field pattern diagram. *only_k_slice* is a tuple with starting and
-    ending (inclusive) index of the k-vectors where the patterns were
-    exported during simulation, e.g. (0, 2) for the first, second and
-    third exported k-vector. If it is None (default), all k-vectors
-    where field patterns were exported will be added to the diagram.
+    If *vertical_complex_pairs* is False (default), real and imaginary
+    parts of the field patterns will be next to each other, otherwise
+    on top of each other.
+
+    Specify *only_k_* to limit the k-vecs to be included in the field
+    pattern diagram. *only_k* can be a list with k-vector indexes to be
+    included OR a tuple with length 2, in which case *only_k* is
+    interpreted as a slice, e.g. (0, 2) meaning the first, second and
+    third exported k-vector will be included. Please note that with
+    these indexes, the index of exported k-vectors are meant, not the
+    index of all k-vectors simulated.  If it is None (default), all
+    k-vectors where field patterns were exported will be added to the
+    diagram.
 
     """
     if not path.isdir(imgfolder):
@@ -375,8 +384,12 @@ def distribute_pattern_images(
         # convert sets to sorted lists:
         bnums = sorted(dst_list[0])
         knums = sorted(dst_list[1])
-        if only_k_slice is not None:
-            knums = knums[only_k_slice[0]:only_k_slice[1] + 1]
+        if only_k is not None:
+            if isinstance(only_k, tuple) and len(only_k) == 2:
+                # interpret only_k as a slice:
+                knums = knums[only_k[0]:only_k[1] + 1]
+            else:
+                knums = [knums[i] for i in only_k]
         bnums = sorted(bnums)
         # reverse, because I want real part first:
         ris = sorted(dst_list[2], reverse=True)
@@ -402,11 +415,18 @@ def distribute_pattern_images(
         # values of the axes. Because the pngs are generally not
         # rectangular, we will have a different pixelsize in x and y.
 
-        # border belonging to one png in x: (0.5 + 1.5) * bordersize:
-        pixelsize_x = 1.0 / (imgsize[0] + 2 * borderpixel)
-        # border belonging to one png in y: (1.5 + 1.5) * bordersize:
-        pixelsize_y = 1.0 / (imgsize[1] + 3 * borderpixel)
-        # print 'pixel sizes (in data space)', pixelsize_x, pixelsize_y
+        if vertical_complex_pairs:
+            # border belonging to one png in x: (1.5 + 1.5) * bordersize:
+            pixelsize_x = 1.0 / (imgsize[0] + 3 * borderpixel)
+            # border belonging to one png in y: (0.5 + 1.5) * bordersize:
+            pixelsize_y = 1.0 / (imgsize[1] + 2 * borderpixel)
+            # print 'pixel sizes (in data space)', pixelsize_x, pixelsize_y
+        else:
+            # border belonging to one png in x: (0.5 + 1.5) * bordersize:
+            pixelsize_x = 1.0 / (imgsize[0] + 2 * borderpixel)
+            # border belonging to one png in y: (1.5 + 1.5) * bordersize:
+            pixelsize_y = 1.0 / (imgsize[1] + 3 * borderpixel)
+            # print 'pixel sizes (in data space)', pixelsize_x, pixelsize_y
 
         # the aspect ratio for the subplot so the pixels turn out
         # rectangular:
@@ -420,16 +440,21 @@ def distribute_pattern_images(
         # between adjacent pngs.
         ext_thin_border_x = 0.5 - 0.5 * pixelsize_x * borderpixel
         ext_thick_border_x = 0.5 - 1.5 * pixelsize_x * borderpixel
-        ext_border_y = 0.5 - 1.5 * pixelsize_y * borderpixel
+        ext_thin_border_y = 0.5 - 0.5 * pixelsize_y * borderpixel
+        ext_thick_border_y = 0.5 - 1.5 * pixelsize_y * borderpixel
 
         # size in data units:
-        w_dataunits = len(knums) * num_cmplx_comps
-        h_dataunits = len(bnums)
+        if vertical_complex_pairs:
+            w_dataunits = len(knums)
+            h_dataunits = len(bnums) * num_cmplx_comps
+        else:
+            w_dataunits = len(knums) * num_cmplx_comps
+            h_dataunits = len(bnums)
 
         # now we have all data, so start plotting
 
         fig = plt.figure(
-            figsize=(2 * w_dataunits, 2 * h_dataunits)
+            figsize=(1 * w_dataunits / ax_aspect, 1 * h_dataunits)
             # note: do not play with dpi here, it does not change
             # the point size for fonts, so the graphics sizes change
             # while label sizes stay constant!
@@ -446,28 +471,53 @@ def distribute_pattern_images(
             # where must the image go?
             try:
                 ic = ris.index(ri)
-                x0 = knums.index(knum) * num_cmplx_comps + ic
-                y0 = 1 + bnums.index(bandnum)
+                if vertical_complex_pairs:
+                    x0 = knums.index(knum)
+                    y0 = bnums.index(bandnum) * num_cmplx_comps + ic
+                else:
+                    x0 = knums.index(knum) * num_cmplx_comps + ic
+                    y0 = bnums.index(bandnum)
             except ValueError:
                 # kvec was excluded from distribution
                 continue
-            xl = x0 - ext_thin_border_x if ic else x0 - ext_thick_border_x
-            xr = x0 + ext_thick_border_x if ic else x0 + ext_thin_border_x
+            if vertical_complex_pairs:
+                xl = x0 - ext_thick_border_x
+                xr = x0 + ext_thick_border_x
+                yb = y0 - ext_thin_border_y if ic else y0 - ext_thick_border_y
+                yt = y0 + ext_thick_border_y if ic else y0 + ext_thin_border_y
+            else:
+                xl = x0 - ext_thin_border_x if ic else x0 - ext_thick_border_x
+                xr = x0 + ext_thick_border_x if ic else x0 + ext_thin_border_x
+                yb = y0 - ext_thick_border_y
+                yt = y0 + ext_thick_border_y
             img = mpimg.imread(fname)
             ax.imshow(
                 img,
                 origin='upper',
-                extent=(xl, xr, y0 - ext_border_y, y0 + ext_border_y),
+                extent=(xl, xr, yb, yt),
                 interpolation='none')
 
         # set aspect; must be done after ax.imshow, as the latter changes it:
         ax.set_aspect(ax_aspect)
 
         # set ticks, labels etc.:
-        klabelform = 'k{knum}.{ri}'
-        xticks = [klabelform.format(knum=k, ri=c) for k in knums for c in ris]
+        if vertical_complex_pairs:
+            klabelform = 'k{knum}'
+            xticks = [klabelform.format(knum=k) for k in knums]
+            bandlabelform = '{bandnum} ({ri})'
+            yticks = [
+                bandlabelform.format(
+                    bandnum=b, ri={'r':'re', 'i':'im'}[c])
+                for b in bnums for c in ris]
+        else:
+            klabelform = 'k{knum}.{ri}'
+            xticks = [
+                klabelform.format(knum=k, ri=c) for k in knums for c in ris]
+            yticks = [str(b) for b in bnums]
         ax.set_xticks(range(len(xticks)))
         ax.set_xticklabels(xticks, rotation=45)
+        ax.set_yticks(range(len(yticks)))
+        ax.set_yticklabels(yticks)
         ax.tick_params(which='both', direction='out', length=2)
         ax.set_xlabel('Wave vector index', size='x-large')
         ax.set_ylabel('Band number', size='x-large')
@@ -478,7 +528,7 @@ def distribute_pattern_images(
         # choose proper data region:
         # ax.autoscale_view(tight=True)
         ax.set_xlim(-0.5, w_dataunits - 0.5)
-        ax.set_ylim(0.5, 0.5 + h_dataunits)
+        ax.set_ylim(-0.5, h_dataunits - 0.5)
 
         # width of single png in data units:
         w_png_dataunits = imgsize[0] * pixelsize_x
@@ -540,7 +590,7 @@ def distribute_pattern_images(
 
 def do_runmode(
         sim, runmode, num_processors, bands_plot_title, plot_crop_y,
-        x_axis_hint, convert_field_patterns, field_pattern_plot_k_slice,
+        x_axis_hint, convert_field_patterns, field_pattern_plot_k_selection,
         field_pattern_plot_filetype='pdf', project_bands_list=None):
     """Start a job on the sim object, according to runmode.
 
@@ -589,12 +639,14 @@ def do_runmode(
         indicates whether field pattern h5 files should be converted to
         png (only when postprocessing). If this is true, a diagram with
         all patterns will be created with field patterns for all bands
-        and for the k-vectors included in field_pattern_plot_k_slice
-    :param field_pattern_plot_k_slice:
-        Which k-vecs to include in the field pattern diagram. This slice
-        is a tuple with starting and ending (inclusive) index of the
+        and for the k-vectors included in field_pattern_plot_k_selection
+    :param field_pattern_plot_k_selection:
+        Which k-vecs to include in the field pattern diagram. This can
+        be a tuple with starting and ending (inclusive) index of the
         k-vectors where the patterns were exported during simulation,
-        e.g. (0, 2) for the first, second and third exported k-vector.
+        e.g. (0, 2) for the first, second and third exported k-vector,
+        OR a list of these indexes, OR None, in which case all exported
+        pattern files will be included.
     :param field_pattern_plot_filetype:
         The file extension to where the field pattern plot will be
         saved, Default: 'pdf'
@@ -633,7 +685,7 @@ def do_runmode(
             sim.draw_field_patterns(
                 title=bands_plot_title,
                 filetype=field_pattern_plot_filetype,
-                only_k_slice=field_pattern_plot_k_slice)
+                only_k=field_pattern_plot_k_selection)
     elif runmode.startswith('d'):  # display pngs
         # display png of epsilon:
         sim.display_epsilon()
@@ -641,7 +693,7 @@ def do_runmode(
         if convert_field_patterns:
             sim.draw_field_patterns(
                 title=bands_plot_title,
-                only_k_slice=field_pattern_plot_k_slice,
+                only_k=field_pattern_plot_k_selection,
                 show=True)
         # show band diagram:
         sim.draw_bands(

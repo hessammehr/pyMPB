@@ -142,7 +142,7 @@ def TriHoles2D(
         plot_crop_y=True, # automatic cropping
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_slice=(0,2),
+        field_pattern_plot_k_selection=(0, 2),
         x_axis_hint=[defaults.default_x_axis_hint, kspace][kspace.has_labels()]
     )
 
@@ -258,7 +258,7 @@ def TriHolesSlab3D(
         plot_crop_y=0.8, # crop at 0.8
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_slice=(0,2),
+        field_pattern_plot_k_selection=(0, 2),
         x_axis_hint=kspace
     )
 
@@ -270,7 +270,8 @@ def TriHoles2D_yWaveguide(
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
         convert_field_patterns=False,
-        job_name_suffix='', bands_title_appendix='', plot_crop_y=False):
+        job_name_suffix='', bands_title_appendix='',
+        plot_crop_y=False, field_pattern_plot_k_selection=()):
     """Create a 2D MPB Simulation of a triangular lattice of holes, with
     a waveguide along the nearest neighbor direction, i.e. Gamma->K
     direction.
@@ -512,8 +513,7 @@ def TriHoles2D_yWaveguide(
         sim, runmode, num_processors, draw_bands_title,
         plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
-        # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_slice=(0, k_steps-1),
+        field_pattern_plot_k_selection=field_pattern_plot_k_selection,
         x_axis_hint=5,
         project_bands_list=project_bands_list
     )

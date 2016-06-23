@@ -192,7 +192,7 @@ def UniformSlab3D(
         sim, runmode, num_processors, draw_bands_title,
         plot_crop_y=1.0,
         convert_field_patterns=convert_field_patterns,
-        field_pattern_plot_k_slice=None,
+        field_pattern_plot_k_selection=None,
         x_axis_hint=11,
         field_pattern_plot_filetype='pdf')
 

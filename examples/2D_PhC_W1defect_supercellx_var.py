@@ -60,7 +60,7 @@ def main():
 
         # The bigger the unit cell, the more bands fold in below the
         # waveguide band:
-        first_wg_band = 3 + 2 * (step - 1)
+        first_wg_band = int(3 + 2 * (step - 1))
 
         sim = TriHoles2D_yWaveguide(
             material='SiN',
@@ -98,15 +98,21 @@ def main():
 
         ### save comparison data to file ###
 
+        # interesting bands, containing waveguiding regions:
+        # (index, not band number)
+        comparison_bands = [
+            0, first_wg_band - 1, first_wg_band, first_wg_band + 1]
+
         # If this is not the first step, we have previous data to compare
         # with:
         if prev_step_data is not None:
             sums = []
             # compare the waveguided bands:
-            for j in [0, first_wg_band - 1, first_wg_band, first_wg_band + 1]:
+            for j in comparison_bands:
                 sums.append(
                     sum_of_squares(
-                        prev_step_data[:, 5 + j],
+                        prev_step_data[:, 5] if j==0 else
+                        prev_step_data[:, 5 + j - 4],
                         data[:, 5 + j]
                     )
                 )
@@ -127,8 +133,9 @@ def main():
     ax = fig.add_subplot(111)
     # make double-logarithmic plot for every band:
     for i in range(data.shape[1] -1):
-        ax.loglog(data[:,0], data[:,i + 1], 'o-',
-                  label='band {0}'.format(i+1))
+        ax.loglog(
+            data[:,0], data[:,i + 1], 'o-',
+            label='wg-band {0}'.format(i + 1))
 
     compdata = np.power(data[:,0], -2)
     ax.loglog(data[:,0], compdata, '.:', label='$x^{-2}$')

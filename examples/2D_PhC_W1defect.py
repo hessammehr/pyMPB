@@ -52,7 +52,7 @@ def main():
 
     # The bigger the unit cell, the more bands fold in below the
     # waveguide band:
-    first_wg_band = 3 + 2 * (supercell_x - 1)
+    first_wg_band = int(3 + 2 * (supercell_x - 1))
 
     sim = TriHoles2D_yWaveguide(
         material='SiN',
@@ -71,7 +71,8 @@ def main():
         save_field_patterns_bandnums=[
             1, 2,
             first_wg_band, first_wg_band + 1, first_wg_band + 2],
-        convert_field_patterns=True
+        convert_field_patterns=True,
+        field_pattern_plot_k_selection=[0, 5, 7, 9, 11, 13, 15, 16]
     )
 
     if not sim:

@@ -778,11 +778,14 @@ class Simulation(object):
             del plotter
 
     def draw_field_patterns(
-            self, title='', only_k_slice=None, show=False, filetype='pdf'):
+            self, title='', only_k=None, show=False,
+            filetype=defaults.field_dist_filetype):
         """ Place all field pattern pngs in one diagram and save it to file.
-        If only_k_slice is None (default) all found images at all k vec
-        numbers will be added. Specify a tuple (from, to) to only include
-        those (indices into the list of found k-vecs, inclusive).
+        If only_k is None (default) all found images at all k-vec
+        numbers will be added. Specify a tuple (from, to) to only
+        include those (indexes into the list of found k-vecs,
+        inclusive), OR a list of indexes (also indexes of found
+        k-vectors, not all k-vectors simulated!)
         Specify show to also show the figure (script will not block) or
         show='block' to show and block.
 
@@ -800,6 +803,6 @@ class Simulation(object):
                 imgfolder=dirname,
                 dstfile_prefix=dstfile_prefix,
                 dstfile_type=filetype,
-                only_k_slice=only_k_slice,
+                only_k=only_k,
                 title=title,
                 show=show)

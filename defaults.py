@@ -225,6 +225,11 @@ def default_onclick(event, bandplotter):
     #fig = plt.figure('mode pattern', figsize=(6, 2))
     #ax = fig.add_subplot(111) #put mode pattern image here
 
+# In the field pattern distribution plot, should the real and imaginary
+# parts be on top of each other? Otherwise, they go next to each other:
+field_dist_vertical_cmplx_comps=True
+field_dist_filetype = 'pdf'
+
 contour_lines = {'colors':'k',
                  'linestyles':['dashed','solid'],
                  'linewidths':1.0}
