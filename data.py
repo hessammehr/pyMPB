@@ -43,20 +43,33 @@ refr_index['6H-SiC-anisotropic_c_in_z'] = (
     refr_index['6H-SiC-o'], 
     refr_index['6H-SiC-e'])
 
-# short material names for use in graphics titles:    
-material_names = dict([(k, k) for k in refr_index.keys()])
+
+def update_material_names():
+    # short material names for use in graphics titles:
+    global material_names
+    material_names = dict([(k, k) for k in refr_index.keys()])
+    return material_names
+
+material_names = update_material_names()
+
+# shorter versions:
 material_names['4H-SiC-anisotropic_c_in_z'] = '4H-SiC-z'
 material_names['6H-SiC-anisotropic_c_in_z'] = '6H-SiC-z'
     
-    
 #print 'refractive index:', refr_index
 
-dielectrics = dict(refr_index)
-for key, val in dielectrics.items():
-    if isinstance(val, (tuple, list)):
-        dielectrics[key] = tuple(v**2 for v in val)
-    else:
-        dielectrics[key]=val**2
+
+def update_dielectrics():
+    global dielectrics
+    dielectrics = dict(refr_index)
+    for key, val in dielectrics.items():
+        if isinstance(val, (tuple, list)):
+            dielectrics[key] = tuple(v**2 for v in val)
+        else:
+            dielectrics[key]=val**2
+    return dielectrics
+
+dielectrics = update_dielectrics()
 
 #print 'epsilon:', dielectrics
     

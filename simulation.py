@@ -753,7 +753,9 @@ class Simulation(object):
             title=title,
             crop_y=crop_y,
             band_gaps=not projected,
-            light_cone=self.geometry.is3D,
+            light_cone=(
+                self.geometry.substrate_index if self.geometry.is3D
+                else False),
             projected_bands=projected
         )
         # use returned plotter to add to figure:

@@ -177,7 +177,9 @@ def draw_bands(
     If *band_gaps* is True, draw the band gaps (with colored boxes).
 
     If *light_cone* is True, add a light cone and crop the bandgaps at
-    the light line.
+    the light line. If the simulation was run on a substrate, light_cone
+    must be the index of the refraction of this substrate. The light
+    cone will then be scaled accordingly.
 
     If *projected_bands* is True, add bands that span a range of
     frequencies to the plot. Bandgaps are not drawn in this case. The
@@ -196,6 +198,8 @@ def draw_bands(
     else:
         plotter = custom_plotter
         plotter.next_plot()
+
+    refr_index = 1 if isinstance(light_cone, bool) else light_cone
 
     x_axis_formatter = None
     if isinstance(x_axis_hint, axis_formatter.CustomAxisFormatter):
@@ -284,22 +288,23 @@ def draw_bands(
                 mask = np.zeros_like(projdata, dtype=np.bool)
                 numbands = projdata.shape[1] // 2
                 for i in range(numbands):
-                    if (projdata[:, 2*i] > data[:, 4]).all():
+                    if (projdata[:, 2*i] > data[:, 4] / refr_index).all():
                         mask[:, 2*i:2*i+2] = True
                 projdata = np.ma.array(projdata, mask=mask)
             plotter.add_continuum_bands(projdata)
         if band_gaps:
             if light_cone:
-                gapbands = get_gap_bands(data[:, 5:], light_line=data[:, 4])
+                gapbands = get_gap_bands(
+                    data[:, 5:], light_line=data[:, 4] / refr_index)
             else:
                 gapbands = get_gap_bands(data[:, 5:])
             for band in gapbands:
                 plotter.add_band_gap_rectangle(
                     band[1], band[2],
-                    light_line=data[:,4] if light_cone else None)
+                    light_line=data[:,4] / refr_index if light_cone else None)
 
     if light_cone:
-        plotter.add_light_cone()
+        plotter.add_light_cone(refr_index)
 
     plotter.set_plot_title(title)
     if len(modes) > 1 or (len(modes) == 1 and modes[0]!=''):

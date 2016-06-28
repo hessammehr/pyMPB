@@ -14,6 +14,7 @@
 
 from __future__ import division
 import objects
+import log
 from objects import *
 
 class Geometry(object):
@@ -27,15 +28,40 @@ class Geometry(object):
         else:
             self.depth = depth
         self.triangular = triangular
-        
+        self.substrate_index = 1
+
+
+    def add_substrate(self, material, start_at):
+        if self.substrate_index != 1:
+            log.error('Geometry: a substrate was added before, will ignore '
+                      'this call')
+            return
+        if self.depth == 'no-size':
+            log.error('Geometry: can only add a substrate if depth is '
+                      'given (third dimension). Substrate not added.')
+            return
+        self.substrate_index = material.index
+        self.objects.append(
+            Block(
+                x=0, y=0, z=start_at / 2.0 - self.depth / 4.0,
+                material=material,
+                size=(
+                    #make it bigger than computational cell, just in case:
+                    2 * self.width, 2 * self.height,
+                    self.depth / 2.0 + start_at)
+            ))
+
+
     def get_is3D(self):
         return 'no-size' not in [self.width, self.height, self.depth]
     is3D = property(get_is3D)
-        
+
+
     def get_area(self):
         return self.width*self.height        
     cell_area = property(get_area)
-    
+
+
     def get_lattice(self):
         if self.triangular:
             return ('(make lattice (size %s %s %s)'
@@ -62,8 +88,10 @@ class Geometry(object):
 ##        return('Graphics[{'+','.join(object_template[a.__class__]\
 ##        %a.__dict__ for a in self.objects)+'}]')
 
+
     def __str__(self):
         return '(list' + ''.join(str(a) for a in self.objects) + ')'
+
 
     def __repr__(self):
         s = '; '.join(
@@ -71,7 +99,8 @@ class Geometry(object):
                 'lattice = {0!r}'.format(self.lattice),
                 'geometry = {0!r}'.format(self.__str__())])
         return '<geometry.Geometry object: {0}>'.format(s)
-    
+
+
     def __iter__(self):
         return self
     

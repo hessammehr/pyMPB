@@ -13,7 +13,8 @@
     #along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from data import dielectrics, material_names
+import math
+import data
 class Object(object):
     template_str = (
          "\n    (make %(shape)s\n"
@@ -56,10 +57,12 @@ class Dielectric(object):
     def __init__(self,dielectric):
         if hasattr(dielectric,'__int__'):
             self.epsilon = dielectric
+            self.index = math.sqrt(dielectric)
             self.name = 'eps{0:.3f}'.format(dielectric)
         else:
-            self.epsilon = dielectrics[dielectric]
-            self.name = material_names[dielectric]
+            self.epsilon = data.dielectrics[dielectric]
+            self.index = data.refr_index[dielectric]
+            self.name = data.material_names[dielectric]
             
     def __str__(self):
         if isinstance(self.epsilon, (list, tuple)) and len(self.epsilon) == 3:

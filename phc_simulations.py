@@ -154,7 +154,8 @@ def TriHolesSlab3D(
         save_field_patterns=True, convert_field_patterns=True,
         containing_folder='./',
         job_name_suffix='', bands_title_appendix='',
-        custom_k_space=None, modes=('zeven', 'zodd')):
+        custom_k_space=None, modes=('zeven', 'zodd'),
+        substrate_material=None):
     """Create a 3D MPB Simulation of a slab with a triangular lattice of
     holes.
 
@@ -194,8 +195,11 @@ def TriHolesSlab3D(
     :param custom_k_space: By default, KSpaceTriangular with
     k_interpolation interpolation steps are used. Provide any KSpace
     object here to customize this. k_interpolation will then be ignored.
-    :param modes: a list of modes to run. Possible are 'zeven' and
-    'zodd'. Default: both
+    :param modes: a list of modes to run. Possible are 'zeven', 'zodd'
+    or '' (latter meaning no distinction). Default: ['zeven', 'zodd']
+    :param substrate_material: the material of an optional substrate,
+    see param material. Holes will not be extended into the substrate.
+    Default: None, i.e. the substrate is air.
     :return: the Simulation object
 
     """
@@ -211,12 +215,17 @@ def TriHolesSlab3D(
                 x=0, y=0, z=0,
                 material=mat,
                 #make it bigger than computational cell, just in case:
-                size=(2, 2, thickness)), 
+                size=(2, 2, thickness)),
             Rod(
                 x=0,
-                y=0, 
+                y=0,
                 material='air',
                 radius=radius)])
+
+    if substrate_material:
+        geom.add_substrate(
+            Dielectric(substrate_material),
+            start_at=-0.5 * thickness)
 
     if isinstance(custom_k_space, KSpace):
         kspace = custom_k_space
@@ -231,15 +240,23 @@ def TriHolesSlab3D(
 
     runcode = ''
     for mode in modes:
-        if mode == 'zeven':
-            outputfunc = ' '.join(defaults.output_funcs_te)
+        if mode == '':
+            runcode += (
+                '(run %s)\n' % (
+                    defaults.default_band_func(
+                        poi, ' '.join(defaults.output_funcs_other))
+                ) +
+                '(print-dos 0 1.2 121)\n\n')
         else:
-            outputfunc = ' '.join(defaults.output_funcs_tm)
-        runcode += (
-            '(run-%s %s)\n' % (
-                mode, defaults.default_band_func(poi, outputfunc)
-            ) +
-            '(print-dos 0 1.2 121)\n\n')
+            if mode == 'zeven':
+                outputfunc = ' '.join(defaults.output_funcs_te)
+            else:
+                outputfunc = ' '.join(defaults.output_funcs_tm)
+            runcode += (
+                '(run-%s %s)\n' % (
+                    mode, defaults.default_band_func(poi, outputfunc)
+                ) +
+                '(print-dos 0 1.2 121)\n\n')
 
     jobname = 'TriHolesSlab_{0}_r{1:03.0f}_t{2:03.0f}'.format(
                     mat.name, radius * 1000, thickness * 1000)
@@ -266,7 +283,7 @@ def TriHolesSlab3D(
                         bands_title_appendix)
     return do_runmode(
         sim, runmode, num_processors, draw_bands_title,
-        plot_crop_y=0.8, # crop at 0.8
+        plot_crop_y=0.8 / geom.substrate_index,
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
         field_pattern_plot_k_selection=(0, 2),

@@ -106,7 +106,8 @@ def default_band_func(poi, outputfunc):
 
     """
     return (
-        '\n    display-group-velocities' +
+        '\n    display-group-velocities'
+        '\n    display-zparities display-yparities' +
         ''.join(
             [
                 '\n    (output-at-kpoint (vector3 {0}) {1})'.format(
@@ -120,6 +121,8 @@ def default_band_func(poi, outputfunc):
 
 output_funcs_te = ['fix-hfield-phase', 'output-hfield-z']
 output_funcs_tm = ['fix-efield-phase', 'output-efield-z']
+# these are used for (run) function without specific modes:
+output_funcs_other = output_funcs_te + output_funcs_tm
 
 temporary_epsh5 = './temporary_eps.h5'
 temporary_h5 = './temporary.h5'

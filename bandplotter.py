@@ -261,7 +261,7 @@ class BandPlotter:
             self._ax.set_ylim(self._miny, self._maxy)
 
     def add_light_cone(
-            self, color='gray', alpha=0.5):
+            self, index_of_refraction=1, color='gray', alpha=0.5):
         """Add a line cone to the current subplot.
 
         Only works if plot_bands have been called before on this subplot.
@@ -271,8 +271,9 @@ class BandPlotter:
                 'cannot add light cone: '
                 'k_data not given in last plot_bands()')
         if alpha:
-            fillto = 1.1 * max(self._last_kdata[:, 3].max(),
-                               self._ax.get_ylim()[1])
+            fillto = 1.1 * max(
+                self._last_kdata[:, 3].max() / index_of_refraction,
+                self._ax.get_ylim()[1])
             # As of Python version 3.4.3 and Matplotlib version 1.5.1, there is
             # a bug in Axes.fill_between, which, in certain cases (especially
             # when tight_layout is used or briefly just by moving the plot
@@ -288,12 +289,17 @@ class BandPlotter:
             ##    color=color, alpha=alpha)
             fill_x_data = np.append(
                 self._x_data, [self._x_data[-1], self._x_data[0]])
-            fill_y_data = np.append(self._last_kdata[:, 3], [fillto, fillto])
+            fill_y_data = np.append(
+                self._last_kdata[:, 3] / index_of_refraction,
+                [fillto, fillto])
             self._ax.fill(
                 fill_x_data, fill_y_data,
                 color=color, alpha=alpha)
 
-        self._ax.plot(self._x_data, self._last_kdata[:, 3], color=color)
+        self._ax.plot(
+            self._x_data,
+            self._last_kdata[:, 3] / index_of_refraction,
+            color=color)
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
