@@ -131,7 +131,8 @@ def draw_bandstructure_2D(
 def draw_bands(
         jobname, modes, x_axis_hint=default_x_axis_hint,
         custom_plotter=None, title='', crop_y=True,
-        band_gaps=True, light_cone=False, projected_bands=False):
+        band_gaps=True, light_cone=False, projected_bands=False,
+        mask_proj_bands_above_light_line=False):
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
@@ -278,6 +279,14 @@ def draw_bands(
         if projected_bands:
             fname = '{0}_{1}_projected.csv'.format(jobname, mode)
             projdata = loadtxt(fname, delimiter=',')
+            if light_cone and mask_proj_bands_above_light_line:
+                # ignore projected bands above the light line:
+                mask = np.zeros_like(projdata, dtype=np.bool)
+                numbands = projdata.shape[1] // 2
+                for i in range(numbands):
+                    if (projdata[:, 2*i] > data[:, 4]).all():
+                        mask[:, 2*i:2*i+2] = True
+                projdata = np.ma.array(projdata, mask=mask)
             plotter.add_continuum_bands(projdata)
         if band_gaps:
             if light_cone:

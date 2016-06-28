@@ -117,6 +117,19 @@ def get_intersection_knum(freq_left, freq_right, freq_intersection):
     return (freq_intersection - freq_left) / (freq_right - freq_left)
 
 
+def get_intersection(freq_left1, freq_right1, freq_left2, freq_right2):
+    """Based on two lines, line1 from (0, freq_left1) to (1, freq_right1)
+    and line2 from (0, freq_left2) to (1, freq_right2), return the
+    point (x-value, freq-value) where they intersect. It is not checked whether
+    they intersect, so please take care of that.
+    """
+    ifreq = get_intersection_freq(
+        freq_left1, freq_right1, freq_left2, freq_right2)
+    knum = get_intersection_knum(
+        freq_left1, freq_right1, ifreq)
+    return (knum, ifreq)
+
+
 def get_gap_bands(
         banddata, threshold=5e-4, light_line=None):
     """Calculate the band gaps from the banddata.

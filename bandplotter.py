@@ -22,7 +22,7 @@ else:
     from matplotlib.axes import _process_plot_format
 import numpy as np
 from itertools import cycle
-from utility import get_intersection_knum
+from utility import get_intersection_knum, get_intersection
 from axis_formatter import CustomAxisFormatter
 import log
 import defaults
@@ -321,7 +321,8 @@ class BandPlotter:
 
         points=np.array(points)
         self._ax.add_patch(
-            mpl.patches.Polygon(points, color=color, alpha=alpha))
+            mpl.patches.Polygon(points, color=color, alpha=alpha,
+                                linewidth=0.5))
         # Get polygon's center to place text:
         mx = points.max(axis=0)
         mn = points.min(axis=0)
@@ -458,7 +459,8 @@ class BandPlotter:
 
 
     def add_continuum_bands(
-            self, data, color=None, alpha=0.75):
+            self, data, color=None, alpha=0.65,
+            prevent_overlapping=True):
         """Add continuum (projected) bands to the current subplot.
 
         :param data: a (num_k-vecs x 2*num_conti_bands)-array. The 1st
@@ -469,20 +471,75 @@ class BandPlotter:
         :param color: If this is None (default), use the color of the last
         plotted bands, otherwise, use this color.
         :param alpha: The opacity of the bands.
+        :param prevent_overlapping: if multiple bands overlap, it looks
+        too full if they are half-transparent. This prevents this.
 
         """
-        # TODO: prevent overlapping of multiple conti bands polygons
-
-        if (not data.shape[0] == len(self._x_data) or
-            not data.shape[1] % 2 == 0):
+        numk = len(self._x_data)
+        if (not data.shape[0] == numk or
+                not data.shape[1] % 2 == 0):
             log.warning('data supplied to bandplotter.add_continuum_bands '
                         'is malformed.')
             return
         numbands = data.shape[1] // 2
+
+        if prevent_overlapping:
+            intersection_points = []
+            for b in range(1, numbands):
+                prev_above=False
+                prev_f=0
+                for k in range(numk):
+                    if data[k, 2 * b] < data[k, 2 * b - 1]:
+                        # higher band's bottom is BELOW lower band's top
+                        if prev_above and k != 0:
+                            # calculate intersection:
+                            ipt = get_intersection(
+                                freq_left1=prev_f,
+                                freq_right1=data[k, 2 * b],
+                                freq_left2=data[k - 1, 2 * b - 1],
+                                freq_right2=data[k, 2 * b - 1]
+                            )
+                            intersection_points.append(
+                                (b, ipt[0] + k - 1, ipt[1]))
+                        prev_above = False
+                        prev_f = data[k, 2 * b]
+                        data[k, 2 * b] = data[k, 2 * b - 1]
+                    else:
+                        # higher band's bottom is ABOVE lower band's top
+                        if not prev_above and k != 0:
+                            # calculate intersection:
+                            ipt = get_intersection(
+                                freq_left1=prev_f,
+                                freq_right1=data[k, 2 * b],
+                                freq_left2=data[k - 1, 2 * b - 1],
+                                freq_right2=data[k, 2 * b - 1]
+                            )
+                            intersection_points.append(
+                                (b, ipt[0] + k - 1, ipt[1]))
+                        prev_f = data[k, 2 * b]
+                        prev_above = True
+
         for i in range(numbands):
             # create a polygon for each conti band:
+
+            ipts = []
+            if prevent_overlapping:
+                # is there an intersection point to add in this band?
+                for j, (b, k, f) in reversed(list(enumerate(
+                        intersection_points))):
+                    if b == i:
+                        ipts.append((k, f))
+                        del intersection_points[j]
+
             pts = []
             for k, x in enumerate(self._x_data):
+                if prevent_overlapping:
+                    # do we need to add an intersection point first?
+                    for j, (ki, fi) in reversed(list(enumerate(ipts))):
+                        if k > ki:
+                            pts.append((ki, fi))
+                            del ipts[j]
+
                 pts.append((x, data[k, 2 * i]))
             for k, x in reversed(list(enumerate(self._x_data))):
                 pts.append((x, data[k, 2 * i + 1]))
