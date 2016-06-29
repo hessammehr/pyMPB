@@ -573,7 +573,8 @@ def TriHolesSlab3D_yWaveguide(
     :param thickness: slab thickness in units of the lattice constant
     :param mode: the mode to run. Possible are 'te' and 'tm'.
     :param numbands: number of bands to calculate
-    :param k_steps: number of k_y steps between 0 and 0.5 to simulate
+    :param k_steps: number of k_y steps between 0 and 0.5 to simulate.
+    This can also be a list of the explicit k_y values to be simulated.
     :param supercell_x: the length of the supercell perpendicular to the
     waveguide, in units of sqrt(3) times the lattice constant. If it is
     not a odd number, one will be added.
@@ -633,8 +634,18 @@ def TriHolesSlab3D_yWaveguide(
     # create path if not there yet:
     if not path.exists(path.abspath(repo)):
         makedirs(path.abspath(repo))
+
     # these ky points will be simulated::
-    ky_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+    if isinstance(k_steps, (int, float)):
+        k_steps = int(k_steps)
+        ky_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+    else:
+        ky_points = np.array(k_steps)
+
+    kspace = KSpace(
+        points_list=[(0, ky, 0) for ky in ky_points],
+        k_interpolation=0,
+    )
 
     # In the triangular lattice, in the basis of its reciprocal basis
     # vectors, this is the K' point, i.e. die boundary of the first
@@ -741,11 +752,6 @@ def TriHolesSlab3D_yWaveguide(
                 radius=radius)
             for cx in range(-scxh, scxh + 1)]
         )
-    )
-
-    kspace = KSpace(
-        points_list=[(0, 0, 0), (0, 0.5, 0)],
-        k_interpolation=k_steps - 2,
     )
 
     jobname = 'TriHolesSlab_W1_{0}_r{1:03.0f}_t{2:03.0f}'.format(

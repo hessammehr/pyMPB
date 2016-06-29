@@ -67,7 +67,8 @@ default_mesh_size = 3
 default_numbands = 8
 # the number of bands to calculate if calculation is only supposed to be used
 # for projection of bands:
-num_projected_bands = 4
+num_projected_bands = 2
+
 default_k_interpolation = 3
 
 newmpb = mpbversion >= '1.5'
