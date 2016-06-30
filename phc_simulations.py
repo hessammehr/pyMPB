@@ -646,7 +646,7 @@ def TriHolesSlab3D_yWaveguide(
     else:
         ky_points = np.array(k_steps)
 
-    kspace = KSpace(
+    kspaceW1 = KSpace(
         points_list=[(0, ky, 0) for ky in ky_points],
         k_interpolation=0,
     )
@@ -698,7 +698,7 @@ def TriHolesSlab3D_yWaveguide(
                 resolution=resolution,
                 supercell_z=supercell_z,
                 mesh_size=mesh_size,
-                runmode='sim',
+                runmode='sim' if runmode.startswith('s') else '',
                 num_processors=num_processors,
                 containing_folder=repo,
                 save_field_patterns=False,
@@ -807,7 +807,7 @@ def TriHolesSlab3D_yWaveguide(
     sim = Simulation(
         jobname=jobname + job_name_suffix,
         geometry=geom,
-        kspace=kspace,
+        kspace=kspaceW1,
         numbands=numbands,
         resolution=resolution,
         mesh_size=mesh_size,

@@ -20,13 +20,14 @@
 
 from __future__ import division
 from numpy import linspace
-from defaults import default_k_interpolation
+import defaults
 import log
 
 
 class KSpace(object):
     def __init__(
-            self, points_list, k_interpolation=default_k_interpolation,
+            self, points_list,
+            k_interpolation=defaults.default_k_interpolation,
             point_labels=list(), **kwargs):
         """Setup a k-space for the simulation with custom k-points.
 
@@ -104,8 +105,10 @@ class KSpace(object):
             vectors = ''.join(vector3 % (x, y, z) for x, y, z in self.points())
 
         if self.k_interpolation:
-            return ('(interpolate %i (list\n%s))' %
-                    (self.k_interpolation, vectors))
+            return ('(%s %i (list\n%s))' %
+                    (defaults.k_interpolation_function,
+                     self.k_interpolation,
+                     vectors))
         else:
             return '(list\n%s)' % vectors
 
@@ -144,7 +147,7 @@ class KSpace(object):
 
 
 class KSpaceTriangular(KSpace):
-    def __init__(self, k_interpolation=default_k_interpolation):
+    def __init__(self, k_interpolation=defaults.default_k_interpolation):
         """Setup a k-space for the simulation with critical k-points along the
         boundary of the irreducible brillouin zone of the triangular/hexagonal
         lattice, i.e.: [Gamma, M, K, Gamma].
@@ -159,7 +162,7 @@ class KSpaceTriangular(KSpace):
 
 
 class KSpaceRectangular(KSpace):
-    def __init__(self, k_interpolation=default_k_interpolation):
+    def __init__(self, k_interpolation=defaults.default_k_interpolation):
         """Setup a k-space for the simulation with critical k-points along the
         boundary of the irreducible brillouin zone of the rectangular lattice,
         i.e.: [Gamma, X, M, Gamma].

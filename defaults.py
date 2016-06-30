@@ -62,6 +62,8 @@ for mpb in ['mbp', 'mpbi', 'mpb-mpi', 'mpbi-mpi']:
     except OSError:
         pass
 
+newmpb = mpbversion >= '1.5'
+
 default_resolution = 32
 default_mesh_size = 3
 default_numbands = 8
@@ -70,8 +72,11 @@ default_numbands = 8
 num_projected_bands = 2
 
 default_k_interpolation = 3
+if newmpb:
+    k_interpolation_function = 'kinterpolate-uniform'
+else:
+    k_interpolation_function = 'interpolate'
 
-newmpb = mpbversion >= '1.5'
 default_initcode = (
     ';load module for calculating local dos:\n'
     '(define dosmodule (%search-load-path "dosv2.scm"))\n'
