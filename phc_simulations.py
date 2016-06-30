@@ -485,8 +485,12 @@ def TriHoles2D_yWaveguide(
     else:
         outputfuncs = defaults.output_funcs_tm
 
+    runcode = ''
+    if defaults.newmpb:
+        runcode = '(optimize-grid-size!)\n\n'
+
     if save_field_patterns_bandnums and save_field_patterns_kvecs:
-        runcode = (
+        runcode += (
             ';function to determine whether an item x is member of list:\n'
             '(define (member? x list)\n'
             '    (cond (\n'
@@ -513,7 +517,7 @@ def TriHoles2D_yWaveguide(
             '(print-dos 0 1.2 121)\n\n'
         )
     else:
-        runcode = ('(run-{0} {1})\n'.format(
+        runcode += ('(run-{0} {1})\n'.format(
                 mode,
                 defaults.default_band_func([], None)
             ) +
@@ -762,8 +766,12 @@ def TriHolesSlab3D_yWaveguide(
     else:
         outputfuncs = defaults.output_funcs_tm
 
+    runcode = ''
+    if defaults.newmpb:
+        runcode = '(optimize-grid-size!)\n\n'
+
     if save_field_patterns_bandnums and save_field_patterns_kvecs:
-        runcode = (
+        runcode += (
             ';function to determine whether an item x is member of list:\n'
             '(define (member? x list)\n'
             '    (cond (\n'
@@ -790,7 +798,7 @@ def TriHolesSlab3D_yWaveguide(
             '(print-dos 0 1.2 121)\n\n'
         )
     else:
-        runcode = ('(run-{0} {1})\n'.format(
+        runcode += ('(run-{0} {1})\n'.format(
                 mode,
                 defaults.default_band_func([], None)
             ) +
