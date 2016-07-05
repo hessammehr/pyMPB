@@ -69,7 +69,7 @@ default_mesh_size = 3
 default_numbands = 8
 # the number of bands to calculate if calculation is only supposed to be used
 # for projection of bands:
-num_projected_bands = 2
+num_projected_bands = 4
 
 default_k_interpolation = 3
 if newmpb:
@@ -101,7 +101,7 @@ number_of_tiles_to_output = 3
 field_output_folder_prefix = 'pngs'
 # specify wheter the rather big hdf5 files should be kept after they
 # were converted to png files:
-delete_h5_after_postprocessing = not True
+delete_h5_after_postprocessing = True
 
 
 def default_band_func(poi, outputfunc):

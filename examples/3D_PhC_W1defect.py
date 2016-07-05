@@ -24,7 +24,7 @@ from __future__ import division
 import sys
 sys.path.append('../')
 import numpy as np
-from phc_simulations import TriHolesSlab3D_yWaveguide
+from phc_simulations import TriHolesSlab3D_Waveguide
 import log
 import defaults
 
@@ -36,11 +36,11 @@ def main():
         mode = 'sim'
 
     # monkey patching:
-    # (don't output multiple tiles along x)
+    # (don't output multiple tiles along y)
     # (x and y are switched because of -T)
     defaults.mpbdata_call = (
         'mpb-data -T -rn%(resolution)s '
-        '-x%(number_of_tiles_to_output)s '
+        '-y%(number_of_tiles_to_output)s '
         '-o%(output_file)s '
         '%(h5_file)s')
     defaults.number_of_tiles_to_output=5
@@ -48,20 +48,20 @@ def main():
     ksteps = 17
 
     # width of the supercell:
-    supercell_x = 5 #9
+    supercell_size = 5 #9
 
     # The bigger the unit cell, the more bands fold in below the
     # waveguide band:
-    first_wg_band = int(3 + 2 * (supercell_x - 1))
+    first_wg_band = int(3 + 2 * (supercell_size - 1))
 
-    sim = TriHolesSlab3D_yWaveguide(
+    sim = TriHolesSlab3D_Waveguide(
         material='SiN',
         radius=0.377,
         thickness=0.88,
         mode='zeven',
         numbands=24,
         k_steps=ksteps,
-        supercell_x=supercell_x,
+        supercell_size=supercell_size,
         supercell_z=6,
         resolution=32,
         mesh_size=7,
@@ -69,7 +69,7 @@ def main():
         num_processors=8,
         projected_bands_folder='./projected_bands_repo',
         save_field_patterns_kvecs=[
-            (0, x, 0) for x in np.linspace(0, 0.5, num=ksteps)],
+            (x, 0, 0) for x in np.linspace(0, 0.5, num=ksteps)],
         save_field_patterns_bandnums=[
             1, 2,
             first_wg_band, first_wg_band + 1, first_wg_band + 2],

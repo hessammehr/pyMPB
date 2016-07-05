@@ -291,9 +291,9 @@ def TriHolesSlab3D(
     )
 
 
-def TriHoles2D_yWaveguide(
-        material, radius, mode='te', numbands=8, k_steps=17,
-        supercell_x=5, resolution=32, mesh_size=7,
+def TriHoles2D_Waveguide(
+        material, radius, mode='te', numbands=8, k_steps=17, ydirection=False,
+        supercell_size=5, resolution=32, mesh_size=7,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
@@ -316,10 +316,14 @@ def TriHoles2D_yWaveguide(
     :param radius: the radius of holes in units of the lattice constant
     :param mode: the mode to run. Possible are 'te' and 'tm'.
     :param numbands: number of bands to calculate
-    :param k_steps: number of k_y steps between 0 and 0.5 to simulate
-    :param supercell_x: the length of the supercell perpendicular to the
-    waveguide, in units of sqrt(3) times the lattice constant. If it is
-    not a odd number, one will be added.
+    :param k_steps: number of k steps along the waveguide direction
+    between 0 and 0.5 to simulate
+    :param ydirection: set this if the waveguide should point along y,
+    otherwise (default) it will point along x. Use the default if you
+    want to use yparity data.
+    :param supercell_size: the length of the supercell perpendicular to
+    the waveguide, in units of sqrt(3) times the lattice constant. If it
+    is not a odd number, one will be added.
     :param resolution: described in MPB documentation
     :param mesh_size: described in MPB documentation
     :param runmode: can be one of the following:
@@ -333,8 +337,8 @@ def TriHoles2D_yWaveguide(
     :param num_processors: number of processors used during simulation
     :param projected_bands_folder: the path to the folder which will
     contain the simulations of the unperturbed PhC, which is needed for
-    the projections along k_x. If the folder contains simulations run
-    before, their data will be reused.
+    the projections perpendicular to the waveguide direction. If the
+    folder contains simulations run before, their data will be reused.
     :param save_field_patterns_kvecs: a list of k-vectors (3-tuples),
     which indicates where field pattern h5 files are generated during
     the simulation (only at bands in save_field_patterns_bandnums)
@@ -374,8 +378,13 @@ def TriHoles2D_yWaveguide(
     # create path if not there yet:
     if not path.exists(path.abspath(repo)):
         makedirs(path.abspath(repo))
-    # these ky points will be simulated::
-    ky_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+    # these k points will be simulated (along waveguide):
+    k_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+
+    # Note: in the following, I use a triangular lattice,
+    # which is orientated such that the Gamma->K direction points
+    # towards y in cartesian coordinates. If ydirection is False, it does
+    # not matter, because the projected bands stay the same.
 
     # In the triangular lattice, in the basis of its reciprocal basis
     # vectors, this is the K' point, i.e. die boundary of the first
@@ -385,7 +394,7 @@ def TriHoles2D_yWaveguide(
     # 8212-8222 (2000); page 8216 & Fig. 8):
     rectBZ_K = np.array((0.25, -0.25))
     # the M point in the triangular lattice reciprocal basis, which points
-    # along +X:
+    # along +X (perpendicular to a waveguide in k_y direction):
     # (note: if k_y is greater than 1/3, we leave the 1st BZ in +x
     # direction. But this is OK and we calculate it anyway, because it
     # does not change the projection. If we want to optimize
@@ -398,8 +407,8 @@ def TriHoles2D_yWaveguide(
     project_bands_list = []
 
     # now, see if we need to simulate:
-    for ky in ky_points:
-        jobname_suffix = '_ky{0:06.0f}'.format(ky*1e6)
+    for ky in k_points:
+        jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
         jobname = unperturbed_jobname + jobname_suffix
         project_bands_list.append(path.join(repo, jobname))
         range_file_name = path.join(
@@ -407,7 +416,7 @@ def TriHoles2D_yWaveguide(
         if not path.isfile(range_file_name):
             # does not exist, so start simulation:
             log.info('unperturbed structure not yet simulated at '
-                     'k_y={0}. Running now...'.format(ky))
+                     'k_wg={0}. Running now...'.format(ky))
             kspace = KSpace(
                 points_list=[
                     rectBZ_K * ky * 2,
@@ -428,7 +437,7 @@ def TriHoles2D_yWaveguide(
                 save_field_patterns=False,
                 convert_field_patterns=False,
                 job_name_suffix=jobname_suffix,
-                bands_title_appendix=', at ky={0:0.3f}'.format(ky),
+                bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
                 modes=[mode]
             )
 
@@ -442,40 +451,69 @@ def TriHoles2D_yWaveguide(
                 return
 
     # make it odd:
-    if supercell_x % 2 == 0:
-        supercell_x += 1
+    if supercell_size % 2 == 0:
+        supercell_size += 1
     # half of the supercell (floored):
-    scxh = int(supercell_x / 2)
+    sch = int(supercell_size / 2)
 
     # Create geometry and add objects.
     # Note: (0, 0, 0) is the center of the unit cell.
-    geom = Geometry(
-        width='(* (sqrt 3) %i)' % supercell_x,
-        height=1,
-        triangular=False,
-        objects=([
-            # center holes:
-            Rod(
-                x='(* %i (sqrt 3))' % cx,
-                y=0,
-                material='air',
-                radius=radius)
-            for cx in list(range(-scxh, 0)) + list(range(1, scxh + 1))] +
+    if ydirection:
+        geom = Geometry(
+            width='(* (sqrt 3) %i)' % supercell_size,
+            height=1,
+            triangular=False,
+            objects=([
+                # center holes:
+                Rod(
+                    x='(* %i (sqrt 3))' % cx,
+                    y=0,
+                    material='air',
+                    radius=radius)
+                for cx in list(range(-sch, 0)) + list(range(1, sch + 1))] +
 
-            # perimeter holes:
-            [Rod(
-                x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
-                y=0.5,
-                material='air',
-                radius=radius)
-            for cx in range(-scxh, scxh + 1)]
+                # perimeter holes:
+                [Rod(
+                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
+                    y=0.5,
+                    material='air',
+                    radius=radius)
+                for cx in range(-sch, sch + 1)]
+            )
         )
-    )
+        kspace = KSpace(
+            points_list=[(0, 0, 0), (0, 0.5, 0)],
+            k_interpolation=k_steps - 2,
+        )
+    else:
+        geom = Geometry(
+            width=1,
+            height='(* (sqrt 3) %i)' % supercell_size,
+            triangular=False,
+            objects=([
+                # center holes:
+                Rod(
+                    x=0,
+                    y='(* %i (sqrt 3))' % cy,
+                    material='air',
+                    radius=radius)
+                for cy in list(range(-sch, 0)) + list(range(1, sch + 1))] +
 
-    kspace = KSpace(
-        points_list=[(0, 0, 0), (0, 0.5, 0)],
-        k_interpolation=k_steps - 2,
-    )
+                # perimeter holes:
+                [Rod(
+                    x=0.5,
+                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
+                    material='air',
+                    radius=radius)
+                for cy in range(-sch, sch + 1)]
+            )
+        )
+        kspace = KSpace(
+            points_list=[(0, 0, 0), (0.5, 0, 0)],
+            k_interpolation=k_steps - 2,
+        )
+
+
 
     jobname = 'TriHoles2D_W1_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
@@ -551,9 +589,10 @@ def TriHoles2D_yWaveguide(
     )
 
 
-def TriHolesSlab3D_yWaveguide(
+def TriHolesSlab3D_Waveguide(
         material, radius, thickness, mode='te', numbands=8, k_steps=17,
-        supercell_x=5, supercell_z=6, resolution=32, mesh_size=7,
+        ydirection=False, supercell_size=5, supercell_z=6,
+        resolution=32, mesh_size=7,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
@@ -577,9 +616,14 @@ def TriHolesSlab3D_yWaveguide(
     :param thickness: slab thickness in units of the lattice constant
     :param mode: the mode to run. Possible are 'te' and 'tm'.
     :param numbands: number of bands to calculate
-    :param k_steps: number of k_y steps between 0 and 0.5 to simulate.
-    This can also be a list of the explicit k_y values to be simulated.
-    :param supercell_x: the length of the supercell perpendicular to the
+    :param k_steps: number of k steps along the waveguide direction
+    between 0 and 0.5 to simulate. This can also be a list of the
+    explicit k values (just scalar values for component along the
+    waveguide axis) to be simulated.
+    :param ydirection: set this if the waveguide should point along y,
+    otherwise (default) it will point along x. Use the default if you
+    want to use yparity data.
+    :param supercell_size: the length of the supercell perpendicular to the
     waveguide, in units of sqrt(3) times the lattice constant. If it is
     not a odd number, one will be added.
     :param supercell_z: the height of the supercell in units of the
@@ -597,8 +641,8 @@ def TriHolesSlab3D_yWaveguide(
     :param num_processors: number of processors used during simulation
     :param projected_bands_folder: the path to the folder which will
     contain the simulations of the unperturbed PhC, which is needed for
-    the projections along k_x. If the folder contains simulations run
-    before, their data will be reused.
+    the projections perpendicular to the waveguide direction. If the
+    folder contains simulations run before, their data will be reused.
     :param save_field_patterns_kvecs: a list of k-vectors (3-tuples),
     which indicates where field pattern h5 files are generated during
     the simulation (only at bands in save_field_patterns_bandnums)
@@ -639,17 +683,17 @@ def TriHolesSlab3D_yWaveguide(
     if not path.exists(path.abspath(repo)):
         makedirs(path.abspath(repo))
 
-    # these ky points will be simulated::
+    # these k points will be simulated (along waveguide):
     if isinstance(k_steps, (int, float)):
         k_steps = int(k_steps)
-        ky_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+        k_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
     else:
-        ky_points = np.array(k_steps)
+        k_points = np.array(k_steps)
 
-    kspaceW1 = KSpace(
-        points_list=[(0, ky, 0) for ky in ky_points],
-        k_interpolation=0,
-    )
+    # Note: in the following, I use a triangular lattice,
+    # which is orientated such that the Gamma->K direction points
+    # towards y in cartesian coordinates. If ydirection is False, it does
+    # not matter, because the projected bands stay the same.
 
     # In the triangular lattice, in the basis of its reciprocal basis
     # vectors, this is the K' point, i.e. die boundary of the first
@@ -659,7 +703,7 @@ def TriHolesSlab3D_yWaveguide(
     # 8212-8222 (2000); page 8216 & Fig. 8):
     rectBZ_K = np.array((0.25, -0.25))
     # the M point in the triangular lattice reciprocal basis, which points
-    # along +X:
+    # along +X (perpendicular to a waveguide in k_y direction):
     # (note: if k_y is greater than 1/3, we leave the 1st BZ in +x
     # direction. But this is OK and we calculate it anyway, because it
     # does not change the projection. If we want to optimize
@@ -672,8 +716,8 @@ def TriHolesSlab3D_yWaveguide(
     project_bands_list = []
 
     # now, see if we need to simulate:
-    for ky in ky_points:
-        jobname_suffix = '_ky{0:06.0f}'.format(ky*1e6)
+    for ky in k_points:
+        jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
         jobname = unperturbed_jobname + jobname_suffix
         project_bands_list.append(path.join(repo, jobname))
         range_file_name = path.join(
@@ -681,7 +725,7 @@ def TriHolesSlab3D_yWaveguide(
         if not path.isfile(range_file_name):
             # does not exist, so start simulation:
             log.info('unperturbed structure not yet simulated at '
-                     'k_y={0}. Running now...'.format(ky))
+                     'k_wg={0}. Running now...'.format(ky))
             kspace = KSpace(
                 points_list=[
                     rectBZ_K * ky * 2,
@@ -704,7 +748,7 @@ def TriHolesSlab3D_yWaveguide(
                 save_field_patterns=False,
                 convert_field_patterns=False,
                 job_name_suffix=jobname_suffix,
-                bands_title_appendix=', at ky={0:0.3f}'.format(ky),
+                bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
                 modes=[mode]
             )
 
@@ -718,45 +762,89 @@ def TriHolesSlab3D_yWaveguide(
                 return
 
     # make it odd:
-    if supercell_x % 2 == 0:
-        supercell_x += 1
+    if supercell_size % 2 == 0:
+        supercell_size += 1
     # half of the supercell (floored):
-    scxh = int(supercell_x / 2)
+    sch = int(supercell_size / 2)
 
     # Create geometry and add objects.
     # Note: (0, 0, 0) is the center of the unit cell.
-    geom = Geometry(
-        width='(* (sqrt 3) %i)' % supercell_x,
-        height=1,
-        depth=supercell_z,
-        triangular=False,
-        objects=([
-            Block(
-                x=0, y=0, z=0,
-                material=mat,
-                #make it bigger than computational cell, just in case:
-                size=(
-                    '(* (sqrt 3) %i)' % (supercell_x + 1),
-                    2,
-                    thickness))] +
+    if ydirection:
+        geom = Geometry(
+            width='(* (sqrt 3) %i)' % supercell_size,
+            height=1,
+            depth=supercell_z,
+            triangular=False,
+            objects=([
+                Block(
+                    x=0, y=0, z=0,
+                    material=mat,
+                    #make it bigger than computational cell, just in case:
+                    size=(
+                        '(* (sqrt 3) %i)' % (supercell_size + 1),
+                        2,
+                        thickness))] +
 
-            # center holes:
-            [Rod(
-                x='(* %i (sqrt 3))' % cx,
-                y=0,
-                material='air',
-                radius=radius)
-            for cx in list(range(-scxh, 0)) + list(range(1, scxh + 1))] +
+                # center holes:
+                [Rod(
+                    x='(* %i (sqrt 3))' % cx,
+                    y=0,
+                    material='air',
+                    radius=radius)
+                for cx in list(range(-sch, 0)) + list(range(1, sch + 1))] +
 
-            # perimeter holes:
-            [Rod(
-                x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
-                y=0.5,
-                material='air',
-                radius=radius)
-            for cx in range(-scxh, scxh + 1)]
+                # perimeter holes:
+                [Rod(
+                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
+                    y=0.5,
+                    material='air',
+                    radius=radius)
+                for cx in range(-sch, sch + 1)]
+            )
         )
-    )
+
+        kspaceW1 = KSpace(
+            points_list=[(0, ky, 0) for ky in k_points],
+            k_interpolation=0,
+        )
+    else:
+        geom = Geometry(
+            width=1,
+            height='(* (sqrt 3) %i)' % supercell_size,
+            depth=supercell_z,
+            triangular=False,
+            objects=([
+                Block(
+                    x=0, y=0, z=0,
+                    material=mat,
+                    #make it bigger than computational cell, just in case:
+                    size=(
+                        2,
+                        '(* (sqrt 3) %i)' % (supercell_size + 1),
+                        thickness))] +
+
+                # center holes:
+                [Rod(
+                    x=0,
+                    y='(* %i (sqrt 3))' % cy,
+                    material='air',
+                    radius=radius)
+                for cy in list(range(-sch, 0)) + list(range(1, sch + 1))] +
+
+                # perimeter holes:
+                [Rod(
+                    x=0.5,
+                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
+                    material='air',
+                    radius=radius)
+                for cy in range(-sch, sch + 1)]
+            )
+        )
+
+        kspaceW1 = KSpace(
+            points_list=[(ky, 0, 0) for ky in k_points],
+            k_interpolation=0,
+        )
 
     jobname = 'TriHolesSlab_W1_{0}_r{1:03.0f}_t{2:03.0f}'.format(
                     mat.name, radius * 1000, thickness * 1000)
