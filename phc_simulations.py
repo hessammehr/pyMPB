@@ -482,8 +482,8 @@ def TriHoles2D_Waveguide(
             )
         )
         kspace = KSpace(
-            points_list=[(0, 0, 0), (0, 0.5, 0)],
-            k_interpolation=k_steps - 2,
+            points_list=[(0, x, 0) for x in np.linspace(0, 0.5, num=k_steps)],
+            k_interpolation=0,
         )
     else:
         geom = Geometry(
@@ -509,8 +509,8 @@ def TriHoles2D_Waveguide(
             )
         )
         kspace = KSpace(
-            points_list=[(0, 0, 0), (0.5, 0, 0)],
-            k_interpolation=k_steps - 2,
+            points_list=np.linspace(0, 0.5, num=k_steps),
+            k_interpolation=0,
         )
 
 
