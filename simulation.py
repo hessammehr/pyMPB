@@ -748,6 +748,9 @@ class Simulation(object):
         TODO: add subplots for each file in argument 'comparison_files=[]'
 
         """
+        
+        print('I WAS CALLED!!!!!!!!!!!!!!!!!!!')
+        
         jobname = path.join(self.workingdir, self.jobname)
         # see if projected bands were calculated:
         projected = False not in [
