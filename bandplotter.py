@@ -143,11 +143,24 @@ class BandPlotter:
 
         for i, ax in enumerate(self._axes):
             ax.change_geometry(rows, numcols, i + 1)
-
+    
+    def _calc_corrected_x_values(self, k_data):
+        """Calculate new x-axis values based on the Euclidian point distance of
+        the k-vectors."""
+        def pointDistance(p1, p2):
+            """Euclidian point distance in 3D space"""
+            return np.sqrt( np.sum( np.square( p2-p1 ) ) )
+        
+        x_vals = np.zeros( (len(k_data)) )
+        k_data_vecs = k_data[:,:-1] # the kmag/2pi column is irrelevant here
+        for i,k in enumerate(k_data_vecs[:-1]):
+            x_vals[i+1] = pointDistance(k, k_data_vecs[i+1] )+x_vals[i]
+        return x_vals
+    
     def plot_bands(
             self, banddata, k_data, formatstr='',
             x_axis_formatter=CustomAxisFormatter(),
-            crop_y=True, picker=3, label=None, **kwargs):
+            crop_y=True, picker=3, label=None, correct_x_axis=True, **kwargs):
         """Plot bands. plt.show() must be called to actually show the figure
         afterwards.
 
@@ -178,6 +191,11 @@ class BandPlotter:
 
         The *label* is the graph's label. It will be shown in a plot legend if
         one is added.
+        
+        If *correct_x_axis* is set to True (default), the bands are plotted
+        versus x-values which are non-equidistant according to the Euclidian
+        distance between the k-vectors. That way distortions are avoided which
+        occur when plotting versus the k-index.
 
         All other keyword arguments *kwargs* will be forwarded to the
         matplotlib plot function.
@@ -222,9 +240,20 @@ class BandPlotter:
             self._last_color = kwargs['c']
         else:
             self._last_color = kwargs['color']
-
-        self._ax.plot(banddata, formatstr, label=label, **kwargs)
-
+        
+        if correct_x_axis:
+            x_vals = self._calc_corrected_x_values(k_data)
+            self._ax.plot(x_vals, banddata, formatstr, label=label, **kwargs)
+            
+            # we need to update the reference to the x_data and the 
+            # x_axis_formatter ticks accordingly to get the lightcone and the
+            # x-axis labels right
+            # TODO: needs to be checked if it works in all cases
+            self._x_data = x_vals
+            x_axis_formatter._ticks = x_vals[x_axis_formatter._ticks]
+        else:
+            self._ax.plot(banddata, formatstr, label=label, **kwargs)
+        
         # get kwargs for ticklabel formatting:
         if (x_axis_formatter.get_longest_label_length() >
             defaults.long_xticklabels_when_longer_than):
