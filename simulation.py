@@ -277,23 +277,26 @@ class Simulation(object):
                     h5_file=self.eps_file + ':data', 
                     output_file=defaults.temporary_epsh5)
         log.info("calling: {0}".format(callstr))
-        if not sp.call(callstr.split(), cwd=self.workingdir):
-            # no error, continue:
-            dct = dict(self.__dict__, h5_file=defaults.temporary_epsh5)
-            # save dielectric to png:
-            if self.geometry.is3D:
-                callstr = (defaults.epsh5topng_call_3D % dct,
-                           defaults.epsh5topng_call_3D_cross_sect % dct)
-            else:
-                callstr = (defaults.epsh5topng_call_2D % dct,)
-            retcode = 0
-            for s in callstr:
-                if not retcode:
-                    log.info("calling: {0}".format(s))
-                    retcode = retcode or sp.call(s.split(), 
-                                                 cwd=self.workingdir)
-        else:
+        
+        try:
+            sp.call(callstr.split(), cwd=self.workingdir)
+        except:
             return 1
+        
+        # no error, continue:
+        dct = dict(self.__dict__, h5_file=defaults.temporary_epsh5)
+        # save dielectric to png:
+        if self.geometry.is3D:
+            callstr = (defaults.epsh5topng_call_3D % dct,
+                       defaults.epsh5topng_call_3D_cross_sect % dct)
+        else:
+            callstr = (defaults.epsh5topng_call_2D % dct,)
+        retcode = 0
+        for s in callstr:
+            if not retcode:
+                log.info("calling: {0}".format(s))
+                retcode = retcode or sp.call(s.split(), 
+                                             cwd=self.workingdir)
 
         return retcode
 
@@ -635,30 +638,35 @@ class Simulation(object):
             log.info("renamed {0} to {1}".format(
                         self.eps_file + '~', self.eps_file)) 
 
-        self.epsilon_to_png()
-        if convert_field_patterns:
-            self.fieldpatterns_to_png()
-
-        # delete temporary files:
-        if path.isfile(path.join(self.workingdir, defaults.temporary_epsh5)):
-            remove(path.join(self.workingdir, defaults.temporary_epsh5))
-        if path.isfile(path.join(self.workingdir, defaults.temporary_h5)):
-            remove(path.join(self.workingdir, defaults.temporary_h5))
-        if not defaults.delete_h5_after_postprocessing:
-            # rename the epsilon.h5 file so my system knows it is a
-            # temporary file:
-            if path.isfile(self.eps_file + '~'):
-                # but delete old temporary file first:
-                remove(self.eps_file + '~')
-            if path.isfile(self.eps_file):
-                rename(self.eps_file, self.eps_file + '~')
-                log.info("renamed {0} to {1}".format(
-                    self.eps_file, self.eps_file + '~'))
+        retcode = self.epsilon_to_png()
+        if retcode == 1:
+            log.warning('converting epsilon h5-file to png failed, '+
+                        'skipping further steps!')
         else:
-            # delete all .h5 files:
-            if path.isfile(self.eps_file):
-                remove(self.eps_file)
-                log.info("deleted {0}".format(self.eps_file))
+            if convert_field_patterns:
+                self.fieldpatterns_to_png()
+    
+            # delete temporary files:
+            if path.isfile(path.join(self.workingdir, 
+                                     defaults.temporary_epsh5)):
+                remove(path.join(self.workingdir, defaults.temporary_epsh5))
+            if path.isfile(path.join(self.workingdir, defaults.temporary_h5)):
+                remove(path.join(self.workingdir, defaults.temporary_h5))
+            if not defaults.delete_h5_after_postprocessing:
+                # rename the epsilon.h5 file so my system knows it is a
+                # temporary file:
+                if path.isfile(self.eps_file + '~'):
+                    # but delete old temporary file first:
+                    remove(self.eps_file + '~')
+                if path.isfile(self.eps_file):
+                    rename(self.eps_file, self.eps_file + '~')
+                    log.info("renamed {0} to {1}".format(
+                        self.eps_file, self.eps_file + '~'))
+            else:
+                # delete all .h5 files:
+                if path.isfile(self.eps_file):
+                    remove(self.eps_file)
+                    log.info("deleted {0}".format(self.eps_file))
         return
 
     def display_epsilon(self):
