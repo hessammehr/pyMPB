@@ -28,28 +28,35 @@ class KSpace(object):
     def __init__(
             self, points_list,
             k_interpolation=defaults.default_k_interpolation,
+            use_uniform_interpolation=False,
             point_labels=list(), **kwargs):
         """Setup a k-space for the simulation with custom k-points.
 
-        Keyword arguments:
-        points_list     -- The sequence of critical k-points:
-                           Usually, a list of 3-tuples, but can also be a list
-                           of 2-tuples or a list of numbers, from which the
-                           3-tuples will be built internally by expanding the
-                           missing dimensions with zeros, e.g.
-                           [0.5, (0.5, 1)] -> [(0.5, 0, 0), (0.5, 1, 0)].
-        k_interpolation -- In the simulation, the points_list will be expanded
-                           by linearly interpolating between every consecutive
-                           pair of points, by adding k_interpolation points
-                           between each pair.
-                           (default: defaults.default_k_interpolation)
-        point_labels    -- (optional) A list of strings, one for each point in
-                           points_list. These strings denotes the high symmetry
-                           or critical point label of the points, e.g. 'Gamma'
-                           for the point (0, 0, 0). These labels will be added
-                           as comments to the point definitions in the ctl file
-                           and more importantly can be used as labels on the
-                           k-vector axis
+        :param points_list:
+            The sequence of critical k-points: Usually, a list of
+            3-tuples, but can also be a list of 2-tuples or a list of
+            numbers, from which the 3-tuples will be built internally by
+            expanding the missing dimensions with zeros, e.g.
+            [0.5,(0.5, 1)] -> [(0.5, 0, 0), (0.5, 1, 0)].
+        :param k_interpolation:
+            In the simulation, the points_list will be expanded by
+            linearly interpolating between every consecutive pair of
+            points, by adding k_interpolation points between each pair.
+            (default: defaults.default_k_interpolation)
+        :param use_uniform_interpolation:
+            MPB Version 1.5 and newer provides the kinterpolate_uniform
+            function, which distributes the k-vectors uniformly in
+            k-space. Set this to True if you want to use that (default:
+            False).
+        :param point_labels:
+            (optional) A list of strings, one for each point in
+            points_list. These strings denotes the high symmetry or
+            critical point label of the points, e.g. 'Gamma' for the
+            point (0, 0, 0). These labels will be added as comments to
+            the point definitions in the ctl file and more importantly
+            can be used as labels on the k-vector axis
+        :param kwargs: only used internally
+
         """
         # build list of 3-tuples:
         three_list = []
@@ -87,6 +94,12 @@ class KSpace(object):
         point_labels = point_labels[:len(three_list)]
 
         self.k_interpolation = k_interpolation
+        self.use_uniform_interpolation = use_uniform_interpolation
+        if use_uniform_interpolation and not defaults.newmpb:
+            log.warning('Requested kinterpolate_uniform function in KSpace, '
+                        'but this is only available starting from MPB v.1.5. '
+                        'Will fall back to simple interpolate function.')
+            self.use_uniform_interpolation = False
         self.points_list = three_list
         self.point_labels = point_labels
         self.__dict__.update(kwargs)
@@ -104,9 +117,14 @@ class KSpace(object):
         else:
             vectors = ''.join(vector3 % (x, y, z) for x, y, z in self.points())
 
+        if self.use_uniform_interpolation:
+            interpol_func = defaults.k_uniform_interpolation_function
+        else:
+            interpol_func = defaults.k_interpolation_function
+
         if self.k_interpolation:
             return ('(%s %i (list\n%s))' %
-                    (defaults.k_interpolation_function,
+                    (interpol_func,
                      self.k_interpolation,
                      vectors))
         else:
@@ -147,7 +165,9 @@ class KSpace(object):
 
 
 class KSpaceTriangular(KSpace):
-    def __init__(self, k_interpolation=defaults.default_k_interpolation):
+    def __init__(
+            self, k_interpolation=defaults.default_k_interpolation,
+            use_uniform_interpolation=False):
         """Setup a k-space for the simulation with critical k-points along the
         boundary of the irreducible brillouin zone of the triangular/hexagonal
         lattice, i.e.: [Gamma, M, K, Gamma].
@@ -158,11 +178,14 @@ class KSpaceTriangular(KSpace):
             points_list=[(0, 0, 0), (0, 0.5, 0), ('(/ -3)', '(/ 3)', 0),
                          (0, 0, 0)],
             k_interpolation=k_interpolation,
+            use_uniform_interpolation=use_uniform_interpolation,
             point_labels=['Gamma', 'M', 'K', 'Gamma'])
 
 
 class KSpaceRectangular(KSpace):
-    def __init__(self, k_interpolation=defaults.default_k_interpolation):
+    def __init__(
+            self, k_interpolation=defaults.default_k_interpolation,
+            use_uniform_interpolation=False):
         """Setup a k-space for the simulation with critical k-points along the
         boundary of the irreducible brillouin zone of the rectangular lattice,
         i.e.: [Gamma, X, M, Gamma].
@@ -173,6 +196,7 @@ class KSpaceRectangular(KSpace):
             points_list=[(0, 0, 0), (0.5, 0, 0), (0.5, 0.5, 0),
                          (0, 0, 0)],
             k_interpolation=k_interpolation,
+            use_uniform_interpolation=use_uniform_interpolation,
             point_labels=['Gamma', 'X', 'M', 'Gamma'])
 
 
@@ -191,4 +215,5 @@ class KSpaceRectangularGrid(KSpace):
         # x_steps and y_steps needed in bandstructure plot in graphics.py:
         KSpace.__init__(
             self, points_list=grid, k_interpolation=0,
+            use_uniform_interpolation=False,
             x_steps=x_steps, y_steps=y_steps)

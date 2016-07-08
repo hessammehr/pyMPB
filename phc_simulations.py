@@ -95,7 +95,9 @@ def TriHoles2D(
     if isinstance(custom_k_space, KSpace):
         kspace = custom_k_space
     else:
-        kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        kspace = KSpaceTriangular(
+            k_interpolation=k_interpolation,
+            use_uniform_interpolation=defaults.newmpb)
 
     # points of interest: (output mode patterns at these points)
     if save_field_patterns:
@@ -230,7 +232,9 @@ def TriHolesSlab3D(
     if isinstance(custom_k_space, KSpace):
         kspace = custom_k_space
     else:
-        kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        kspace = KSpaceTriangular(
+            k_interpolation=k_interpolation,
+            use_uniform_interpolation=defaults.newmpb)
 
     # points of interest: (output mode patterns at these points)
     if save_field_patterns:

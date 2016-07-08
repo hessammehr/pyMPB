@@ -21,6 +21,7 @@ sys.path.append('../')
 import numpy as np
 from kspace import KSpace, KSpaceTriangular
 from kspace import KSpaceRectangular, KSpaceRectangularGrid
+import defaults
 
 class TestKSpaces(unittest.TestCase):
 
@@ -33,6 +34,22 @@ class TestKSpaces(unittest.TestCase):
                             '    (vector3 0 0 0)  ;Gamma',
                             '))']) % k_interpolation
         test_kspace = KSpaceTriangular(k_interpolation=k_interpolation)
+        self.assertEqual(str(test_kspace), target)
+
+    def test_KSpaceTriangular_string_representation_uniform_interpolation(
+            self):
+        k_interpolation = 8
+        target = '\n'.join(['(%s %i (list',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '    (vector3 0 0.5 0)  ;M',
+                            '    (vector3 (/ -3) (/ 3) 0)  ;K',
+                            '    (vector3 0 0 0)  ;Gamma',
+                            '))']) % (
+            defaults.k_uniform_interpolation_function,
+            k_interpolation)
+        test_kspace = KSpaceTriangular(
+            k_interpolation=k_interpolation,
+            use_uniform_interpolation=True)
         self.assertEqual(str(test_kspace), target)
 
     def test_KSpaceTriangular_string_representation_no_interpolation(self):

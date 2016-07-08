@@ -72,10 +72,11 @@ default_numbands = 8
 num_projected_bands = 4
 
 default_k_interpolation = 3
+k_interpolation_function = 'interpolate'
 if newmpb:
-    k_interpolation_function = 'kinterpolate-uniform'
+    k_uniform_interpolation_function = 'kinterpolate-uniform'
 else:
-    k_interpolation_function = 'interpolate'
+    k_uniform_interpolation_function = 'interpolate'
 
 default_initcode = (
     ';load module for calculating local dos:\n'
