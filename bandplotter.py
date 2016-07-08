@@ -245,6 +245,13 @@ class BandPlotter:
             x_vals = self._calc_corrected_x_values(k_data)
             self._ax.plot(x_vals, banddata, formatstr, label=label, **kwargs)
             
+            # TODO: This is an example on how to use scatter to plot the bands.
+            # This will be needed to color the points by e.g. parity. To do
+            # sp simply use the `c`-argument of scatter.
+#            for bd in banddata.T:
+#                self._ax.scatter(x_vals, bd, label=label, zorder=1000, 
+#                                 **kwargs)
+            
             # we need to update the reference to the x_data and the 
             # x_axis_formatter ticks accordingly to get the lightcone and the
             # x-axis labels right
