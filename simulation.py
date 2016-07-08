@@ -749,8 +749,6 @@ class Simulation(object):
 
         """
         
-        print('I WAS CALLED!!!!!!!!!!!!!!!!!!!')
-        
         jobname = path.join(self.workingdir, self.jobname)
         # see if projected bands were calculated:
         projected = False not in [
