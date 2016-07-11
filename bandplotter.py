@@ -193,7 +193,7 @@ class BandPlotter:
         one is added.
         
         If *correct_x_axis* is set to True (default), the bands are plotted
-        versus x-values which are non-equidistant according to the Euclidian
+        versus x-values which are equidistant according to the Euclidian
         distance between the k-vectors. That way distortions are avoided which
         occur when plotting versus the k-index.
 
