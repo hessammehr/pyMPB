@@ -257,7 +257,7 @@ class BandPlotter:
             # x-axis labels right
             # TODO: needs to be checked if it works in all cases
             self._x_data = x_vals
-            x_axis_formatter._ticks = x_vals[x_axis_formatter._ticks]
+            x_axis_formatter.set_ticks(x_vals[x_axis_formatter._ticks])
         else:
             self._ax.plot(banddata, formatstr, label=label, **kwargs)
         

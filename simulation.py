@@ -139,7 +139,7 @@ class Simulation(object):
                     to_log.append('existing ' + self.workingdir +
                                   ' renamed to ' + backupdir)
                     # make new empty working directory:
-                    mkdir(self.workingdir)
+                    mkdir(self.wSimulationorkingdir)
                     to_log.append(
                         'created directory ' + self.workingdir + '\n')
                 else:
