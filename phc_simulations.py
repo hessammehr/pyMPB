@@ -321,7 +321,9 @@ def TriHoles2D_Waveguide(
     :param mode: the mode to run. Possible are 'te' and 'tm'.
     :param numbands: number of bands to calculate
     :param k_steps: number of k steps along the waveguide direction
-    between 0 and 0.5 to simulate
+    between 0 and 0.5 to simulate. This can also be a list of the
+    explicit k values (just scalar values for component along the
+    waveguide axis) to be simulated.
     :param ydirection: set this if the waveguide should point along y,
     otherwise (default) it will point along x. Use the default if you
     want to use yparity data.
@@ -382,8 +384,13 @@ def TriHoles2D_Waveguide(
     # create path if not there yet:
     if not path.exists(path.abspath(repo)):
         makedirs(path.abspath(repo))
+
     # these k points will be simulated (along waveguide):
-    k_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+    if isinstance(k_steps, (int, float)):
+        k_steps = int(k_steps)
+        k_points = np.linspace(0, 0.5, num=k_steps, endpoint=True)
+    else:
+        k_points = np.array(k_steps)
 
     # Note: in the following, I use a triangular lattice,
     # which is orientated such that the Gamma->K direction points
