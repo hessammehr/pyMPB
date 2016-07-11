@@ -139,7 +139,7 @@ class Simulation(object):
                     to_log.append('existing ' + self.workingdir +
                                   ' renamed to ' + backupdir)
                     # make new empty working directory:
-                    mkdir(self.wSimulationorkingdir)
+                    mkdir(self.workingdir)
                     to_log.append(
                         'created directory ' + self.workingdir + '\n')
                 else:
@@ -283,7 +283,7 @@ class Simulation(object):
         except OSError as err:
             log.warning('The following OSError occurred while calling mpb:' +
                         '\n\t{}\n'.format(err) + 
-                        '\tMaybe mpb is not properly insalled.')
+                        '\tMaybe mpb-data is not properly installed.')
             return 1
         
         # no error, continue:
