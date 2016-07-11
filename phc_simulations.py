@@ -477,8 +477,8 @@ def TriHoles2D_Waveguide(
             triangular=False,
             objects=objects
         )
-        kspace = KSpace(
-            points_list=[(0, x, 0) for x in np.linspace(0, 0.5, num=k_steps)],
+        kspaceW1 = KSpace(
+            points_list=[(0, ky, 0) for ky in k_points],
             k_interpolation=0,
         )
     else:
@@ -488,8 +488,8 @@ def TriHoles2D_Waveguide(
             triangular=False,
             objects=objects
         )
-        kspace = KSpace(
-            points_list=np.linspace(0, 0.5, num=k_steps),
+        kspaceW1 = KSpace(
+            points_list=[(kx, 0, 0) for kx in k_points],
             k_interpolation=0,
         )
 
@@ -542,7 +542,7 @@ def TriHoles2D_Waveguide(
     sim = Simulation(
         jobname=jobname + job_name_suffix,
         geometry=geom,
-        kspace=kspace,
+        kspace=kspaceW1,
         numbands=numbands,
         resolution=resolution,
         mesh_size=mesh_size,
@@ -791,7 +791,7 @@ def TriHolesSlab3D_Waveguide(
             )
         )
         kspaceW1 = KSpace(
-            points_list=[(ky, 0, 0) for ky in k_points],
+            points_list=[(kx, 0, 0) for kx in k_points],
             k_interpolation=0,
         )
 
