@@ -281,9 +281,9 @@ class Simulation(object):
         try:
             sp.call(callstr.split(), cwd=self.workingdir)
         except OSError as err:
-            log.warning('The following OSError occurred while calling mpb:' +
-                        '\n\t{}\n'.format(err) + 
-                        '\tMaybe mpb-data is not properly installed.')
+            log.warning('Command could not be executed. Will continue ' +
+                        'without converting epsilon.h5 to png.'
+                        '\n\tOSError message: {}\n'.format(err))
             return 1
         
         # no error, continue:
@@ -641,11 +641,7 @@ class Simulation(object):
             log.info("renamed {0} to {1}".format(
                         self.eps_file + '~', self.eps_file)) 
 
-        retcode = self.epsilon_to_png()
-        if retcode == 1:
-            log.warning('converting epsilon h5-file to png failed, '+
-                        'skipping further steps!')
-        else:
+        if not self.epsilon_to_png() == 1:
             if convert_field_patterns:
                 self.fieldpatterns_to_png()
     
