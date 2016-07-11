@@ -47,7 +47,7 @@ def main():
         log.error('an error occurred during simulation. See the .out file')
         return
     
-    log.info(' ##### success! #####\n\n'.format(radius))
+    log.info(' ##### success! #####\n\n')
         
 
 if __name__ == '__main__':
