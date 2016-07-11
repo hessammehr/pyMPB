@@ -25,7 +25,7 @@ from kspace import KSpaceTriangular, KSpace
 from objects import Dielectric, Rod, Block
 import defaults
 import log
-from utility import do_runmode
+from utility import do_runmode, get_triangular_phc_waveguide_air_rods
 from os import path, makedirs
 import numpy as np
 
@@ -461,29 +461,14 @@ def TriHoles2D_Waveguide(
     sch = int(supercell_size / 2)
 
     # Create geometry and add objects.
-    # Note: (0, 0, 0) is the center of the unit cell.
+    objects = get_triangular_phc_waveguide_air_rods(
+        radius, supercell_size, ydirection)
     if ydirection:
         geom = Geometry(
             width='(* (sqrt 3) %i)' % supercell_size,
             height=1,
             triangular=False,
-            objects=([
-                # center holes:
-                Rod(
-                    x='(* %i (sqrt 3))' % cx,
-                    y=0,
-                    material='air',
-                    radius=radius)
-                for cx in list(range(-sch, 0)) + list(range(1, sch + 1))] +
-
-                # perimeter holes:
-                [Rod(
-                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
-                    y=0.5,
-                    material='air',
-                    radius=radius)
-                for cx in range(-sch, sch + 1)]
-            )
+            objects=objects
         )
         kspace = KSpace(
             points_list=[(0, x, 0) for x in np.linspace(0, 0.5, num=k_steps)],
@@ -494,30 +479,12 @@ def TriHoles2D_Waveguide(
             width=1,
             height='(* (sqrt 3) %i)' % supercell_size,
             triangular=False,
-            objects=([
-                # center holes:
-                Rod(
-                    x=0,
-                    y='(* %i (sqrt 3))' % cy,
-                    material='air',
-                    radius=radius)
-                for cy in list(range(-sch, 0)) + list(range(1, sch + 1))] +
-
-                # perimeter holes:
-                [Rod(
-                    x=0.5,
-                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
-                    material='air',
-                    radius=radius)
-                for cy in range(-sch, sch + 1)]
-            )
+            objects=objects
         )
         kspace = KSpace(
             points_list=np.linspace(0, 0.5, num=k_steps),
             k_interpolation=0,
         )
-
-
 
     jobname = 'TriHoles2D_W1_{0}_r{1:03.0f}'.format(
                     mat.name, radius * 1000)
@@ -772,41 +739,27 @@ def TriHolesSlab3D_Waveguide(
     sch = int(supercell_size / 2)
 
     # Create geometry and add objects.
-    # Note: (0, 0, 0) is the center of the unit cell.
+    objects = get_triangular_phc_waveguide_air_rods(
+        radius, supercell_size, ydirection)
     if ydirection:
         geom = Geometry(
             width='(* (sqrt 3) %i)' % supercell_size,
             height=1,
             depth=supercell_z,
             triangular=False,
-            objects=([
-                Block(
+            objects=(
+                [Block(
                     x=0, y=0, z=0,
                     material=mat,
-                    #make it bigger than computational cell, just in case:
+                    # make it bigger than computational cell, just in case:
                     size=(
                         '(* (sqrt 3) %i)' % (supercell_size + 1),
                         2,
-                        thickness))] +
-
-                # center holes:
-                [Rod(
-                    x='(* %i (sqrt 3))' % cx,
-                    y=0,
-                    material='air',
-                    radius=radius)
-                for cx in list(range(-sch, 0)) + list(range(1, sch + 1))] +
-
-                # perimeter holes:
-                [Rod(
-                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
-                    y=0.5,
-                    material='air',
-                    radius=radius)
-                for cx in range(-sch, sch + 1)]
+                        thickness))
+                ] +
+                objects
             )
         )
-
         kspaceW1 = KSpace(
             points_list=[(0, ky, 0) for ky in k_points],
             k_interpolation=0,
@@ -817,34 +770,19 @@ def TriHolesSlab3D_Waveguide(
             height='(* (sqrt 3) %i)' % supercell_size,
             depth=supercell_z,
             triangular=False,
-            objects=([
-                Block(
+            objects=(
+                [Block(
                     x=0, y=0, z=0,
                     material=mat,
-                    #make it bigger than computational cell, just in case:
+                    # make it bigger than computational cell, just in case:
                     size=(
                         2,
                         '(* (sqrt 3) %i)' % (supercell_size + 1),
-                        thickness))] +
-
-                # center holes:
-                [Rod(
-                    x=0,
-                    y='(* %i (sqrt 3))' % cy,
-                    material='air',
-                    radius=radius)
-                for cy in list(range(-sch, 0)) + list(range(1, sch + 1))] +
-
-                # perimeter holes:
-                [Rod(
-                    x=0.5,
-                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
-                    material='air',
-                    radius=radius)
-                for cy in range(-sch, sch + 1)]
+                        thickness))
+                ] +
+                objects
             )
         )
-
         kspaceW1 = KSpace(
             points_list=[(ky, 0, 0) for ky in k_points],
             k_interpolation=0,

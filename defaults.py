@@ -79,7 +79,7 @@ else:
     k_uniform_interpolation_function = 'interpolate'
 
 default_initcode = (
-    ';load module for calculating local dos:\n'
+    ';load module for calculating density of states:\n'
     '(define dosmodule (%search-load-path "dosv2.scm"))\n'
     '(if dosmodule\n'
     '    (include dosmodule)\n'
