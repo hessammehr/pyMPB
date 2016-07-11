@@ -124,6 +124,7 @@ class CustomAxisFormatter(mticker.Formatter):
             # case 1, mpl is building the ticks labels:
             return self._labels[tickindex]
 
+
     def _get_hover_data_from_position(self, x):
         # TODO: here, we could return the linear interpolation between
         # the individual data points, if they are numbers or vectors of
@@ -133,14 +134,17 @@ class CustomAxisFormatter(mticker.Formatter):
             return self._hover_data[int(x + 0.5)]
         else:
             return x
-    
-    def get_ticks(self):
-        """Returns the current ticks, i.e. the sequence with the major tick 
-        positions.
+
+
+    def get_tick_positions(self):
+        """Return the current tick positions, i.e. the sequence with the
+        major tick positions.
+
         """
         return self._ticks
-    
-    def set_ticks(self, new_ticks):
+
+
+    def set_tick_positions(self, new_ticks):
         """Set the major tick positions to new values. 
         
         :param new_ticks:
@@ -381,17 +385,12 @@ class KSpaceAxisFormatter(CustomAxisFormatter):
     def __init__(self, kspace):
         """A formatter used by matplotlib for the k-vector-axis' ticklabels.
 
-        plot high symmetry points (gamma etc.)
-
-        Must be initialized with a list of ticklabels (with the same number of
-        entries as number of ticks set with set_ticks before) and a list with
-        all k-vectors (usually with more entries than ticklabels). During
-        mouseover, the k-vectors will be shown in the status bar of the plot.
-
-        *labels* is a sequence of strings.
-        *kvecdata* is a n x 3 array, where n is the number of k-points
-        *kvecdata* can also be None, in which case the status bar will just
-        show the x-position during hovering.
+        Must be initialized with a KSpace object. The ticklabels will
+        then be built from label data contained in the KSpace object.
+        Useful e.g. if the KSpace object contains high symmetry points
+        (gamma etc.) as labels.
+        During mouseover, the k-vectors will be shown in the status bar
+        of the plot.
 
         """
         if kspace.has_labels():
