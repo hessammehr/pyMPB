@@ -680,7 +680,8 @@ def do_runmode(
     :param plot_crop_y:
         the band diagrams are automatically cropped before the last band
         if plot_crop_y is True, alternatively use plot_crop_y to specify
-        the max. y-value where the plot will be cropped.
+        the max. y-value where the plot will be cropped, or if
+        plot_crop_y is a 2-tuple, the minimum and maximum y-value.
     :param x_axis_hint:
         gives a hint on which kind of ticks and labels should be shown
         on the x-axis of the band diagram and provides the data needed.

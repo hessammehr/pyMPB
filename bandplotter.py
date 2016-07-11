@@ -94,16 +94,20 @@ class BandPlotter:
 
         self._miny = float('inf')
         self._maxy = -float('inf')
-        self._crop_y_val = None
-        # Note on the difference between self._maxy and self._crop_y_val:
-        # self._maxy is always the maximum shown y-value. self._crop_y_val is
-        # only the maximum (and then the same than self._maxy) if plot_bands
-        # was called with a crop_y argument set to a y-value or to True,
-        # otherwise self._crop_y_val will still be None. If another graph is
-        # added with plot_bands while self._crop_y_val is set, the minimum of
-        # the new graph's crop_y value and the old value will be used as new
-        # maximum. If self._crop_y_val is still None, the y-axis will be scaled
-        # to show the maximum of all graphs.
+        self._crop_min_y_val = None
+        self._crop_max_y_val = None
+        # Note on the difference between self._maxy and
+        # self._crop_max_y_val: self._maxy is always the maximum shown
+        # y-value. self._crop_max_y_val is only the maximum (and then
+        # the same than self._maxy) if plot_bands was called with a
+        # crop_y argument set to a y-value or to True, otherwise
+        # self._crop_max_y_val will still be None. If another graph is
+        # added with plot_bands while self._crop_max_y_val is set, the
+        # minimum of the new graph's crop_y value and the old value will
+        # be used as new maximum. If self._crop_max_y_val is still None
+        # in that case, the y-axis will be scaled to show the maximum of
+        # all graphs.
+        # The same goes for the minimum values.
 
         # start new plot at blue again (using the seaborn default color 
         # palette with red and green exchanged to meet common conventions):
@@ -160,7 +164,8 @@ class BandPlotter:
     def plot_bands(
             self, banddata, k_data, formatstr='',
             x_axis_formatter=CustomAxisFormatter(),
-            crop_y=True, picker=3, label=None, correct_x_axis=True, **kwargs):
+            crop_y=True, picker=3, label=None,
+            correct_x_axis=defaults.correct_x_axis, **kwargs):
         """Plot bands. plt.show() must be called to actually show the figure
         afterwards.
 
@@ -180,7 +185,8 @@ class BandPlotter:
         If *crop_y* is true (default), the y-axis (frequency) will be limited
         so that only frequency values are shown where all bands are known.
         Alternatively, a numeric value of crop_y denotes the upper frequency
-        value where the plot will be cropped.
+        value where the plot will be cropped, or if *crop_y* is a
+        2-tuple, it denotes the minimum and maximum y-value.
 
         *picker* (default: 3) is a radius in pixels around the cursor position
         of a mouse click event in the plot. Any vertex inside this radius will
@@ -215,21 +221,42 @@ class BandPlotter:
                 # Automatic cropping: Crop to just below the last band:
                 crop_y = banddata[:,-1].min()
 
-            if self._crop_y_val is None:
+            if hasattr(crop_y, '__len__') and len(crop_y) == 2:
+                newmin = crop_y[0]
+                newmax = crop_y[1]
+            else:
+                newmin = None
+                newmax = crop_y
+
+            if self._crop_max_y_val is None:
                 # Was not cropped before:
-                self._crop_y_val = crop_y
+                self._crop_max_y_val = newmax
             else:
                 # Another graph in the same subplot is cropped, use minimum:
-                self._crop_y_val = min(self._crop_y_val, crop_y)
+                self._crop_max_y_val = min(self._crop_max_y_val, newmax)
 
-        if self._crop_y_val is None:
+            if newmin is not None:
+                if self._crop_min_y_val is None:
+                    # Was not cropped before:
+                    self._crop_min_y_val = newmin
+                else:
+                    # Another graph in the same subplot is cropped, use
+                    # maximum:
+                    self._crop_min_y_val = max(self._crop_min_y_val, newmin)
+
+        if self._crop_max_y_val is None:
             # Neither this graph nor any other in this subplot need to be
             # cropped, so set y-axis' maximum to maximum of data:
             self._maxy = max(self._maxy, banddata.max())
         else:
-            self._maxy = self._crop_y_val
+            self._maxy = self._crop_max_y_val
 
-        self._miny = min(self._miny, banddata.min())
+        if self._crop_min_y_val is None:
+            # Neither this graph nor any other in this subplot need to be
+            # cropped, so set y-axis' minimum to minimum of data:
+            self._miny = min(self._miny, banddata.min())
+        else:
+            self._miny = self._crop_min_y_val
 
         if (not 'color' in kwargs and not 'c' in kwargs and
                 _process_plot_format(formatstr)[-1] is None):
@@ -294,9 +321,11 @@ class BandPlotter:
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
-        if self._crop_y_val is not None:
-            # but only remove y-padding if y-data must be cropped:
-            self._ax.set_ylim(self._miny, self._maxy)
+        # but only remove y-padding if y-data must be cropped:
+        if (self._crop_max_y_val is not None or
+            self._crop_min_y_val is not None):
+                self._ax.set_ylim(self._miny, self._maxy)
+
 
     def plot_dos(self, dos, freqs):
         """Plot density of states in the current subplot."""
@@ -306,9 +335,11 @@ class BandPlotter:
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
-        if self._crop_y_val is not None:
-            # but only remove y-padding if y-data must be cropped:
-            self._ax.set_ylim(self._miny, self._maxy)
+        # but only remove y-padding if y-data must be cropped:
+        if (self._crop_max_y_val is not None or
+            self._crop_min_y_val is not None):
+                self._ax.set_ylim(self._miny, self._maxy)
+
 
     def add_light_cone(
             self, index_of_refraction=1, color='gray', alpha=0.5):
@@ -353,9 +384,11 @@ class BandPlotter:
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
-        if self._crop_y_val is not None:
-            # but only remove y-padding if y-data must be cropped:
-            self._ax.set_ylim(self._miny, self._maxy)
+        # but only remove y-padding if y-data must be cropped:
+        if (self._crop_max_y_val is not None or
+            self._crop_min_y_val is not None):
+                self._ax.set_ylim(self._miny, self._maxy)
+
 
     def add_filled_polygon(
             self, points, color=None, alpha=0.35, gap_text=''):
@@ -619,7 +652,7 @@ class BandPlotter:
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
-        if self._crop_y_val is not None:
+        if self._crop_max_y_val is not None:
             # but only remove y-padding if y-data must be cropped:
             self._ax.set_ylim(self._miny, self._maxy)
 

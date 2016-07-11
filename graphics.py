@@ -172,7 +172,8 @@ def draw_bands(
     If *crop_y* is true (default), the y-axis (frequency) will be
     limited so that only frequency values are shown where all bands are
     known. Alternatively, a numeric value of *crop_y* denotes the upper
-    frequency value where the plot will be cropped.
+    frequency value where the plot will be cropped, or if *crop_y* is a
+    2-tuple, it denotes the minimum and maximum y-value.
 
     If *band_gaps* is True, draw the band gaps (with colored boxes).
 

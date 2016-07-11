@@ -205,6 +205,12 @@ ticks_fractions = True
 # is greater than:
 tick_max_denominator = 1000
 
+# If correct_x_axis is set to True, the bands are plotted versus
+# x-values which are equidistant according to the Euclidian distance
+# between the k-vectors. That way distortions are avoided which occur
+# when plotting versus the k-index.
+correct_x_axis = True
+
 
 def default_onclick(event, bandplotter):
     """This is the default function called if the bands are plotted with a

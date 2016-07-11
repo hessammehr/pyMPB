@@ -710,7 +710,8 @@ class Simulation(object):
         If *crop_y* is true (default), the y-axis (frequency) will be limited
         so that only frequency values are shown where all bands are known.
         Alternatively, a numeric value of *crop_y* denotes the upper frequency
-        value where the plot will be cropped.
+        value where the plot will be cropped, or if *crop_y* is a
+        2-tuple, it denotes the minimum and maximum y-value.
 
         *x_axis_hint* gives a hint on which kind of ticks and labels should be
         shown on the x-axis and provides the data needed.
