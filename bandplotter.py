@@ -105,9 +105,22 @@ class BandPlotter:
         # maximum. If self._crop_y_val is still None, the y-axis will be scaled
         # to show the maximum of all graphs.
 
-        # start new plot at blue again:
-        self._colors = cycle('bgrcmky')
-        self._last_color = 'b'
+        # start new plot at blue again (using the seaborn default color 
+        # palette with red and green exchanged to meet common conventions):
+        self._colors = cycle([(0.2980392156862745, 0.4470588235294118, 
+                               0.6901960784313725),
+                              (0.7686274509803922, 0.3058823529411765, 
+                               0.3215686274509804),
+                              (0.3333333333333333, 0.6588235294117647, 
+                               0.40784313725490196),
+                              (0.5058823529411764, 0.4470588235294118, 
+                               0.6980392156862745),
+                              (0.8, 0.7254901960784313, 
+                               0.4549019607843137),
+                              (0.39215686274509803, 0.7098039215686275, 
+                               0.803921568627451)])
+        self._last_color = (0.2980392156862745, 0.4470588235294118, 
+                            0.6901960784313725)
         self._distribute_subplots()
 
     def set_num_rows(self, numrows):
@@ -130,11 +143,24 @@ class BandPlotter:
 
         for i, ax in enumerate(self._axes):
             ax.change_geometry(rows, numcols, i + 1)
-
+    
+    def _calc_corrected_x_values(self, k_data):
+        """Calculate new x-axis values based on the Euclidian point distance of
+        the k-vectors."""
+        def pointDistance(p1, p2):
+            """Euclidian point distance in 3D space"""
+            return np.sqrt( np.sum( np.square( p2-p1 ) ) )
+        
+        x_vals = np.zeros( (len(k_data)) )
+        k_data_vecs = k_data[:,:-1] # the kmag/2pi column is irrelevant here
+        for i,k in enumerate(k_data_vecs[:-1]):
+            x_vals[i+1] = pointDistance(k, k_data_vecs[i+1] )+x_vals[i]
+        return x_vals
+    
     def plot_bands(
             self, banddata, k_data, formatstr='',
             x_axis_formatter=CustomAxisFormatter(),
-            crop_y=True, picker=3, label=None, **kwargs):
+            crop_y=True, picker=3, label=None, correct_x_axis=True, **kwargs):
         """Plot bands. plt.show() must be called to actually show the figure
         afterwards.
 
@@ -165,6 +191,11 @@ class BandPlotter:
 
         The *label* is the graph's label. It will be shown in a plot legend if
         one is added.
+        
+        If *correct_x_axis* is set to True (default), the bands are plotted
+        versus x-values which are equidistant according to the Euclidian
+        distance between the k-vectors. That way distortions are avoided which
+        occur when plotting versus the k-index.
 
         All other keyword arguments *kwargs* will be forwarded to the
         matplotlib plot function.
@@ -209,9 +240,27 @@ class BandPlotter:
             self._last_color = kwargs['c']
         else:
             self._last_color = kwargs['color']
-
-        self._ax.plot(banddata, formatstr, label=label, **kwargs)
-
+        
+        if correct_x_axis:
+            x_vals = self._calc_corrected_x_values(k_data)
+            self._ax.plot(x_vals, banddata, formatstr, label=label, **kwargs)
+            
+            # TODO: This is an example on how to use scatter to plot the bands.
+            # This will be needed to color the points by e.g. parity. To do
+            # sp simply use the `c`-argument of scatter.
+#            for bd in banddata.T:
+#                self._ax.scatter(x_vals, bd, label=label, zorder=1000, 
+#                                 **kwargs)
+            
+            # we need to update the reference to the x_data and the 
+            # x_axis_formatter ticks accordingly to get the lightcone and the
+            # x-axis labels right
+            # TODO: needs to be checked if it works in all cases
+            self._x_data = x_vals
+            x_axis_formatter.set_ticks(x_vals[x_axis_formatter._ticks])
+        else:
+            self._ax.plot(banddata, formatstr, label=label, **kwargs)
+        
         # get kwargs for ticklabel formatting:
         if (x_axis_formatter.get_longest_label_length() >
             defaults.long_xticklabels_when_longer_than):
