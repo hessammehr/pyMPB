@@ -280,7 +280,10 @@ class Simulation(object):
         
         try:
             sp.call(callstr.split(), cwd=self.workingdir)
-        except:
+        except OSError as err:
+            log.warning('The following OSError occurred while calling mpb:' +
+                        '\n\t{}\n'.format(err) + 
+                        '\tMaybe mpb is not properly insalled.')
             return 1
         
         # no error, continue:
