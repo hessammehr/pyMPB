@@ -133,7 +133,29 @@ class CustomAxisFormatter(mticker.Formatter):
             return self._hover_data[int(x + 0.5)]
         else:
             return x
-
+    
+    def get_ticks(self):
+        """Returns the current ticks, i.e. the sequence with the major tick 
+        positions.
+        """
+        return self._ticks
+    
+    def set_ticks(self, new_ticks):
+        """Set the major tick positions to new values. 
+        
+        :param new_ticks:
+            A sequence with the new positions of the major axis ticks. Must
+            have the same length as the previous _ticks-sequence.
+        
+        """
+        if not hasattr(new_ticks, '__len__'):
+            raise TypeError('new_ticks must be a sequence.')
+        if not len(new_ticks) == len(self._ticks):
+            raise ValueError('new_ticks must be of same length as' + 
+                             ' previous ticks.')
+        self._ticks = new_ticks
+        
+    
     def set_hover_data(self, hover_data):
         """Set the data that will be shown when the mouse hovers over
         the plot.

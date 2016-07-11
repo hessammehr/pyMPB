@@ -213,18 +213,17 @@ def draw_bands(
         x_axis_formatter = axis_formatter.KVectorAxisFormatter(x_axis_hint)
     else:
         num = 0
-        try:
-            # is this a sequence?
+        hintlen = 0
+        if hasattr(x_axis_hint, '__len__'):
             hintlen = len(x_axis_hint)
-        except TypeError:
+        else:
             # no sequence
-            hintlen = 0
             try:
                 # is this a number?
                 num = int(x_axis_hint)
             except ValueError:
                 # no number
-                num = 0
+                pass
         if hintlen > 1 and (isinstance(x_axis_hint[0], int) and
                 hasattr(x_axis_hint[1], 'format')):
             # Supplied a list with at least an int and format_str.
