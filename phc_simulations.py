@@ -296,8 +296,11 @@ def TriHolesSlab3D(
 
 
 def TriHoles2D_Waveguide(
-        material, radius, mode='te', numbands=8, k_steps=17, ydirection=False,
+        material, radius, mode='te', numbands=8, k_steps=17,
         supercell_size=5, resolution=32, mesh_size=7,
+        ydirection=False,
+        first_row_longitudinal_shift=0,
+        second_row_longitudinal_shift=0,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
@@ -324,14 +327,19 @@ def TriHoles2D_Waveguide(
     between 0 and 0.5 to simulate. This can also be a list of the
     explicit k values (just scalar values for component along the
     waveguide axis) to be simulated.
-    :param ydirection: set this if the waveguide should point along y,
-    otherwise (default) it will point along x. Use the default if you
-    want to use yparity data.
     :param supercell_size: the length of the supercell perpendicular to
     the waveguide, in units of sqrt(3) times the lattice constant. If it
     is not a odd number, one will be added.
     :param resolution: described in MPB documentation
     :param mesh_size: described in MPB documentation
+    :param ydirection: set this if the waveguide should point along y,
+    otherwise (default) it will point along x. Use the default if you
+    want to use yparity data.
+    :param first_row_longitudinal_shift: shifts the holes next to the
+    waveguide by this amount, parallel to the waveguide direction.
+    :param second_row_longitudinal_shift: shifts the holes in the second
+    row next to the waveguide by this amount, parallel to the waveguide
+    direction
     :param runmode: can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : create the sim object and save the ctl file
@@ -461,6 +469,17 @@ def TriHoles2D_Waveguide(
                 )
                 return
 
+    # If a shift is used, inversion symmetry is broken:
+    if ((first_row_longitudinal_shift or second_row_longitudinal_shift) and
+        'mpbi' in defaults.mpb_call):
+            log.info('default MPB to use includes inversion symmetry: '
+                 '{0}. '.format(defaults.mpb_call) +
+                 'Shift of holes specified, which breaks inv. symmetry. '
+                 'Will fall back to MPB without inv. symm.: {0}'.format(
+                     defaults.mpb_call.replace('mpbi', 'mpb')
+                 ))
+            defaults.mpb_call = defaults.mpb_call.replace('mpbi', 'mpb')
+
     # make it odd:
     if supercell_size % 2 == 0:
         supercell_size += 1
@@ -469,7 +488,12 @@ def TriHoles2D_Waveguide(
 
     # Create geometry and add objects.
     objects = get_triangular_phc_waveguide_air_rods(
-        radius, supercell_size, ydirection)
+        radius=radius,
+        supercell_size=supercell_size,
+        ydirection=ydirection,
+        first_row_longitudinal_shift=first_row_longitudinal_shift,
+        second_row_longitudinal_shift=second_row_longitudinal_shift)
+
     if ydirection:
         geom = Geometry(
             width='(* (sqrt 3) %i)' % supercell_size,

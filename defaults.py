@@ -209,7 +209,7 @@ tick_max_denominator = 1000
 # x-values which are equidistant according to the Euclidian distance
 # between the k-vectors. That way distortions are avoided which occur
 # when plotting versus the k-index.
-correct_x_axis = True
+correct_x_axis = not True
 
 
 def default_onclick(event, bandplotter):
