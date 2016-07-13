@@ -74,12 +74,23 @@ def wheel(width, height, n, occupancy, separation, material, priority='None'):
 def get_triangular_phc_waveguide_air_rods(
         radius, supercell_size, ydirection=False,
         first_row_longitudinal_shift=0,
-        second_row_longitudinal_shift=0):
+        first_row_radius=None,
+        second_row_longitudinal_shift=0,
+        second_row_radius=None):
     # make it odd:
     if supercell_size % 2 == 0:
         supercell_size += 1
     # half of the supercell (floored):
     sch = int(supercell_size / 2)
+
+    if first_row_radius is None:
+        r1 = radius
+    else:
+        r1 = first_row_radius
+    if second_row_radius is None:
+        r2 = radius
+    else:
+        r2 = second_row_radius
 
     # Create geometry and add objects.
     # Note: (0, 0, 0) is the center of the unit cell.
@@ -94,7 +105,7 @@ def get_triangular_phc_waveguide_air_rods(
                     x='(* %i (sqrt 3))' % cx,
                     y=0 + second_row_longitudinal_shift,
                     material='air',
-                    radius=radius)
+                    radius=r2)
                 for cx in [-1, 1]
             ] +
 
@@ -117,7 +128,7 @@ def get_triangular_phc_waveguide_air_rods(
                     x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
                     y=0.5 + first_row_longitudinal_shift,
                     material='air',
-                    radius=radius)
+                    radius=r1)
                 for cx in [-1, 0]
             ] +
 
@@ -152,7 +163,7 @@ def get_triangular_phc_waveguide_air_rods(
                     x=0 + second_row_longitudinal_shift,
                     y='(* %i (sqrt 3))' % cy,
                     material='air',
-                    radius=radius)
+                    radius=r2)
                 for cy in [-1, 1]
             ] +
 
@@ -175,7 +186,7 @@ def get_triangular_phc_waveguide_air_rods(
                     x=0.5 + first_row_longitudinal_shift,
                     y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
                     material='air',
-                    radius=radius)
+                    radius=r1)
                 for cy in [-1, 0]
             ] +
 

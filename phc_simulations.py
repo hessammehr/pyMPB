@@ -300,7 +300,9 @@ def TriHoles2D_Waveguide(
         supercell_size=5, resolution=32, mesh_size=7,
         ydirection=False,
         first_row_longitudinal_shift=0,
+        first_row_radius=None,
         second_row_longitudinal_shift=0,
+        second_row_radius=None,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
@@ -337,9 +339,13 @@ def TriHoles2D_Waveguide(
     want to use yparity data.
     :param first_row_longitudinal_shift: shifts the holes next to the
     waveguide by this amount, parallel to the waveguide direction.
+    :param first_row_radius: The radius of the holes next to the
+    waveguide. If None (default), use radius.
     :param second_row_longitudinal_shift: shifts the holes in the second
     row next to the waveguide by this amount, parallel to the waveguide
     direction
+    :param second_row_radius: The radius of the holes in the second row
+    next to the waveguide. If None (default), use radius.
     :param runmode: can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : create the sim object and save the ctl file
@@ -492,7 +498,9 @@ def TriHoles2D_Waveguide(
         supercell_size=supercell_size,
         ydirection=ydirection,
         first_row_longitudinal_shift=first_row_longitudinal_shift,
-        second_row_longitudinal_shift=second_row_longitudinal_shift)
+        first_row_radius=first_row_radius,
+        second_row_longitudinal_shift=second_row_longitudinal_shift,
+        second_row_radius=second_row_radius)
 
     if ydirection:
         geom = Geometry(
