@@ -699,7 +699,8 @@ class Simulation(object):
     def draw_bands(
             self, title='', crop_y=True,
             x_axis_hint=defaults.default_x_axis_hint,
-            show=False, block=True, save=True):
+            show=False, block=True, save=True,
+            add_epsilon_as_inset=False):
         """Plot dispersion relation of all bands calculated along all
         k vectors.
 
@@ -748,7 +749,6 @@ class Simulation(object):
         TODO: add subplots for each file in argument 'comparison_files=[]'
 
         """
-        
         jobname = path.join(self.workingdir, self.jobname)
         # see if projected bands were calculated:
         projected = False not in [
@@ -765,7 +765,8 @@ class Simulation(object):
             light_cone=(
                 self.geometry.substrate_index if self.geometry.is3D
                 else False),
-            projected_bands=projected
+            projected_bands=projected,
+            add_epsilon_as_inset=add_epsilon_as_inset
         )
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)

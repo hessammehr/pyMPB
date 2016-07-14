@@ -211,6 +211,22 @@ tick_max_denominator = 1000
 # when plotting versus the k-index.
 correct_x_axis = not True
 
+add_epsilon_as_inset = False
+# The valid location codes are:
+#     'upper right'  : 1,
+#     'upper left'   : 2,
+#     'lower left'   : 3,
+#     'lower right'  : 4,
+#     'right'        : 5,
+#     'center left'  : 6,
+#     'center right' : 7,
+#     'lower center' : 8,
+#     'upper center' : 9,
+#     'center'       : 10,
+epsilon_inset_location = 4
+epsilon_inset_zoom = 0.5
+epsilon_inset_transpose = True
+
 
 def default_onclick(event, bandplotter):
     """This is the default function called if the bands are plotted with a

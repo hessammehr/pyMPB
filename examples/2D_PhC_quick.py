@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 
 from phc_simulations import TriHoles2D
 import log
+import defaults
 
 def main():
 
@@ -30,6 +31,8 @@ def main():
         mode=sys.argv[1]
     else:
         mode='sim'
+
+    defaults.add_epsilon_as_inset = True
 
     sim = TriHoles2D(
         material='SiN',

@@ -834,7 +834,8 @@ def do_runmode(
         # save band diagram as pdf&png:
         sim.draw_bands(
             title=bands_plot_title, crop_y=plot_crop_y,
-            x_axis_hint=x_axis_hint)
+            x_axis_hint=x_axis_hint,
+            add_epsilon_as_inset=defaults.add_epsilon_as_inset)
         # save mode patterns to pdf&png:
         if convert_field_patterns:
             sim.draw_field_patterns(
@@ -853,5 +854,6 @@ def do_runmode(
         # show band diagram:
         sim.draw_bands(
             title=bands_plot_title, show=True, crop_y=plot_crop_y,
-            x_axis_hint=x_axis_hint, save=False)
+            x_axis_hint=x_axis_hint, save=False,
+            add_epsilon_as_inset=defaults.add_epsilon_as_inset)
     return sim

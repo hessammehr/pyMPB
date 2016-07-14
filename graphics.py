@@ -20,6 +20,7 @@ from matplotlib.patches import Ellipse
 from matplotlib.text import Text
 import numpy as np
 from numpy import loadtxt
+from os import path
 from utility import max_epsilon, get_gap_bands
 from defaults import fig_size, contour_lines, contour_filled, contour_plain,\
     colorbar_style, default_x_axis_hint
@@ -28,6 +29,7 @@ from bandplotter import BandPlotter
 import axis_formatter
 import objects
 import log
+import defaults
 
 def draw_geometry(
         geometry,jobname,format='pdf', display=True, block_when_showing=True,
@@ -132,7 +134,8 @@ def draw_bands(
         jobname, modes, x_axis_hint=default_x_axis_hint,
         custom_plotter=None, title='', crop_y=True,
         band_gaps=True, light_cone=False, projected_bands=False,
-        mask_proj_bands_above_light_line=False):
+        mask_proj_bands_above_light_line=False,
+        add_epsilon_as_inset=False):
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
@@ -307,8 +310,19 @@ def draw_bands(
         plotter.add_light_cone(refr_index)
 
     plotter.set_plot_title(title)
+
     if len(modes) > 1 or (len(modes) == 1 and modes[0]!=''):
         plotter.add_legend()
+
+    if add_epsilon_as_inset:
+        fname = path.join(path.split(jobname)[0], 'epsilon.png')
+        if path.isfile(fname):
+            plotter.add_image_inset(
+                fname,
+                loc=defaults.epsilon_inset_location,
+                zoom=defaults.epsilon_inset_zoom,
+                transpose=defaults.epsilon_inset_transpose
+            )
 
     return plotter
     

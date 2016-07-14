@@ -586,7 +586,7 @@ def TriHoles2D_Waveguide(
 
     draw_bands_title = (
         '2D hex. PhC W1; {0}, radius={1:0.3f}'.format(
-            mat.name, geom.objects[0].radius) +
+            mat.name, radius) +
         bands_title_appendix)
 
     return do_runmode(
@@ -889,7 +889,7 @@ def TriHolesSlab3D_Waveguide(
         'Hex. PhC slab W1; {0}, thickness={1:0.3f}, radius={2:0.3f}'.format(
             mat.name,
             geom.objects[0].size[2],
-            geom.objects[1].radius) +
+            radius) +
         bands_title_appendix)
 
     return do_runmode(

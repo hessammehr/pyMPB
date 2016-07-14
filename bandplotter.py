@@ -20,6 +20,7 @@ if mpl.__version__ >= '1.4':
     from matplotlib.axes._base import _process_plot_format
 else:
     from matplotlib.axes import _process_plot_format
+from matplotlib.offsetbox import OffsetImage, AnchoredOffsetbox
 import numpy as np
 from itertools import cycle
 from utility import get_intersection_knum, get_intersection
@@ -656,6 +657,7 @@ class BandPlotter:
             # but only remove y-padding if y-data must be cropped:
             self._ax.set_ylim(self._miny, self._maxy)
 
+
     def add_legend(self, loc = 'upper left'):
         handles, labels = self._ax.get_legend_handles_labels()
         filteredlabels = []
@@ -668,14 +670,46 @@ class BandPlotter:
                 filteredhandles.append(handles[i])
         plt.legend(filteredhandles, filteredlabels, loc=loc)
 
+
+    def add_image_inset(self, filename, loc=4, zoom=1, transpose=False):
+        """
+        Add a raster image to the plot, according to the legend location loc.
+        :param filename: image's file name
+        :param loc: an integer specifying the location.
+        The valid location codes are:
+            'upper right'  : 1,
+            'upper left'   : 2,
+            'lower left'   : 3,
+            'lower right'  : 4,
+            'right'        : 5,
+            'center left'  : 6,
+            'center right' : 7,
+            'lower center' : 8,
+            'upper center' : 9,
+            'center'       : 10,
+        :param zoom: scaling factor of the image
+        :param transpose: Transpose the image.
+
+        """
+        arr_eps = plt.imread(filename)
+        if transpose:
+            arr_eps = arr_eps.transpose((1, 0, 2))
+        print (arr_eps.shape)
+        imagebox = OffsetImage(arr_eps, zoom=zoom)
+        ab = AnchoredOffsetbox(loc=loc, child=imagebox, frameon=False)
+        self._ax.add_artist(ab)
+
+
     def set_plot_title(self, title):
         self._ax.set_title(title, size='x-large')
+
 
     def savefig(self, *args, **kwargs):
         # set tight_layout after everything (title, labels, other subplots)
         # have been added:
         self._fig.tight_layout()
         return self._fig.savefig(*args, **kwargs)
+
 
     def show(self, block=True, tight=True):
         # set tight_layout after everything (title, labels, other subplots)
