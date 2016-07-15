@@ -594,7 +594,7 @@ def TriHoles2D_Waveguide(
         plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_selection=field_pattern_plot_k_selection,
-        x_axis_hint=5,
+        x_axis_hint=[5, "{1}" if ydirection else "{0}"],
         project_bands_list=project_bands_list,
         color_by_parity='y'
     )
@@ -898,7 +898,7 @@ def TriHolesSlab3D_Waveguide(
         plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_selection=field_pattern_plot_k_selection,
-        x_axis_hint=5,
+        x_axis_hint=[5, "{1}" if ydirection else "{0}"],
         project_bands_list=project_bands_list,
         color_by_parity='y'
     )
