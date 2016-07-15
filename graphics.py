@@ -103,7 +103,7 @@ def draw_bandstructure_2D(
     #clf()
     fig = plt.figure(figsize=fig_size)
     ax = fig.add_subplot(111, aspect='equal')
-    x,y,z = loadtxt(
+    x, y, z = loadtxt(
         "{0}_{1}{2}".format(jobname, mode, ext),
         delimiter=', ',
         skiprows=1,
@@ -135,7 +135,7 @@ def draw_bands(
         custom_plotter=None, title='', crop_y=True,
         band_gaps=True, light_cone=False, projected_bands=False,
         mask_proj_bands_above_light_line=False,
-        add_epsilon_as_inset=False):
+        add_epsilon_as_inset=False, color_by_parity=False):
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
@@ -191,12 +191,13 @@ def draw_bands(
     (filenames: [ jobname* + '_' + *mode* + '_projected.csv' for mode in
     modes]).
 
+    :param add_epsilon_as_inset: epsilon,png will be added as inset. See
+    defaults.py for parameters like size and location.
+    :param color_by_parity: Specify 'y' or 'z' to color the plot lines
+    with the data taken from the parity files
+    <jobname>_<mode>[z/y]parity.csv.
+
     """
-
-    # TODO add argument color_by_parity=True, read parity data from files and
-    # color the plot lines accordingly.
-
-
     if custom_plotter is None:
         plotter = BandPlotter()
     else:
@@ -252,37 +253,24 @@ def draw_bands(
         if x_axis_formatter._hover_func_is_default:
             x_axis_formatter.set_hover_data(data[:, 1:4])
 
-        ''' work in progress... #TODO color by parity
+        parities = None
         if color_by_parity:
-            # try to load parity files:
-            fname = '{0}_{1}yparity.csv'.format(jobname, mode)
+            # try to load parity file:
+            fname = '{0}_{1}{2}parity.csv'.format(
+                jobname, mode, color_by_parity)
             try:
-                yparities = loadtxt(fname, delimiter=',')
+                # load data, ignore first column with band numbers:
+                parities = loadtxt(fname, delimiter=',')[:, 1:]
             except IOError:
-                yparities = None
-            #print(fname, yparities)
-            fname = '{0}_{1}zparity.csv'.format(jobname, mode)
-            try:
-                zparities = loadtxt(fname, delimiter=',')
-            except IOError:
-                zparities = None
-            #print(fname, zparities)
-            # cannot simply color the individual points in a plt.plot.
-            # 2 Alternatives:
-            # - superimpose a scatter plot (where each point can be
-            #   individually colored)
-            # - or split band data into 5 categories:
-            # (oddz, evenz) x (oddy, eveny) + (everything else)
-            # each category has in general multiple sets of connected data
-            # points, draw each set with plt.plot in the category's color
-
-        ...end : work in progress'''
+                parities = None
 
         plotter.plot_bands(
             data[:, 5:], data[:, 1:5],
             formatstr='o-',
             x_axis_formatter=x_axis_formatter,
-            label=mode.upper(), crop_y=crop_y)
+            label=mode.upper(),
+            crop_y=crop_y,
+            color_by_parity=parities)
         if projected_bands:
             fname = '{0}_{1}_projected.csv'.format(jobname, mode)
             projdata = loadtxt(fname, delimiter=',')
@@ -291,8 +279,8 @@ def draw_bands(
                 mask = np.zeros_like(projdata, dtype=np.bool)
                 numbands = projdata.shape[1] // 2
                 for i in range(numbands):
-                    if (projdata[:, 2*i] > data[:, 4] / refr_index).all():
-                        mask[:, 2*i:2*i+2] = True
+                    if (projdata[:, 2 * i] > data[:, 4] / refr_index).all():
+                        mask[:, 2 * i:2 * i + 2] = True
                 projdata = np.ma.array(projdata, mask=mask)
             plotter.add_continuum_bands(projdata)
         if band_gaps:
@@ -313,6 +301,9 @@ def draw_bands(
 
     if len(modes) > 1 or (len(modes) == 1 and modes[0]!=''):
         plotter.add_legend()
+
+    if color_by_parity:
+        plotter.add_color_bar_for_parity(parity_direction=color_by_parity)
 
     if add_epsilon_as_inset:
         fname = path.join(path.split(jobname)[0], 'epsilon.png')
@@ -336,10 +327,11 @@ def draw_dos(jobname, modes, custom_plotter=None, title=''):
         callnextplot = True
     
     for i, mode in enumerate(modes):
-        fname = jobname + '_dos_' + mode + '.csv' if mode else \
-                jobname + '_dos.csv'
+        fname = '{0}_{1}dos.csv'.format(jobname, mode)
         try:
-            freqs, dos = loadtxt(fname, delimiter=',', unpack=True)
+            #freqs, dos = loadtxt(fname, delimiter=',', unpack=True)
+            # genfromtxt does not throw an error if there is a '#.#':
+            freqs, dos = np.genfromtxt(fname, delimiter=',', unpack=True)
         except IOError:
             log.error("in graphics.draw_dos: "
                 "File not found: {0}\n".format(fname) + 

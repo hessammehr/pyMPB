@@ -67,6 +67,9 @@ class BandPlotter:
         self._numplots = 0
         self._numrows = max(numrows, 1)
         self._axes = []
+        # The last scatter plot that was added to overlay parity data on a
+        # band diagram. Needed for when a color bar is added:
+        self._last_parity_scatter = None
         self.next_plot()
 
     def _onpick(self, event):
@@ -166,7 +169,8 @@ class BandPlotter:
             self, banddata, k_data, formatstr='',
             x_axis_formatter=CustomAxisFormatter(),
             crop_y=True, picker=3, label=None,
-            correct_x_axis=defaults.correct_x_axis, **kwargs):
+            correct_x_axis=defaults.correct_x_axis,
+            color_by_parity=False, **kwargs):
         """Plot bands. plt.show() must be called to actually show the figure
         afterwards.
 
@@ -204,6 +208,9 @@ class BandPlotter:
         distance between the k-vectors. That way distortions are avoided which
         occur when plotting versus the k-index.
 
+        :param color_by_parity: If not False, provide the parity data as
+        numpy array with the same shape as banddata
+
         All other keyword arguments *kwargs* will be forwarded to the
         matplotlib plot function.
 
@@ -216,6 +223,17 @@ class BandPlotter:
         self._x_data = np.arange(len(banddata))
         self._last_data = banddata
         self._last_kdata = k_data
+
+        if color_by_parity is False:
+            color_by_parity = None
+        if color_by_parity is not None:
+            if banddata.shape != color_by_parity.shape:
+                log.warning(
+                    "color_by_parity's shape ({0}) does not match "
+                    "that of banddata ({1}). Will not color by "
+                    "parity.".format(
+                        color_by_parity.shape, banddata.shape))
+                color_by_parity = False
 
         if crop_y:
             if crop_y is True:
@@ -271,25 +289,30 @@ class BandPlotter:
         
         if correct_x_axis:
             x_vals = self._calc_corrected_x_values(k_data)
-            self._ax.plot(x_vals, banddata, formatstr, label=label, **kwargs)
-            
-            # TODO: This is an example on how to use scatter to plot the bands.
-            # This will be needed to color the points by e.g. parity. To do
-            # sp simply use the `c`-argument of scatter.
-#            for bd in banddata.T:
-#                self._ax.scatter(x_vals, bd, label=label, zorder=1000, 
-#                                 **kwargs)
-            
-            # we need to update the reference to the x_data and the 
+
+            # we need to update the reference to the x_data and the
             # x_axis_formatter ticks accordingly to get the lightcone and the
             # x-axis labels right
             # TODO: needs to be checked if it works in all cases
             self._x_data = x_vals
             x_axis_formatter.set_tick_positions(
                 x_vals[x_axis_formatter.get_tick_positions()])
-        else:
-            self._ax.plot(banddata, formatstr, label=label, **kwargs)
-        
+
+        self._ax.plot(
+            self._x_data, banddata, formatstr, label=label, **kwargs)
+        if color_by_parity is not None:
+            for i, bd in enumerate(banddata.T):
+                self._last_parity_scatter = self._ax.scatter(
+                    self._x_data,
+                    bd,
+                    s=defaults.color_by_parity_marker_size,
+                    label=label,
+                    zorder=100,
+                    c=color_by_parity[:, i],
+                    vmin=-1, vmax=1,
+                    cmap='bwr',
+                    **kwargs)
+
         # get kwargs for ticklabel formatting:
         if (x_axis_formatter.get_longest_label_length() >
             defaults.long_xticklabels_when_longer_than):
@@ -309,16 +332,23 @@ class BandPlotter:
             # the event will fire only once, even when multiple dots coincide:
             # (but then with multiple indices)
             xnum, bands = banddata.shape
-            newdata = np.zeros((2, xnum * bands))
+            newdata = np.zeros((5, xnum * bands))
             for i, x in enumerate(self._x_data):
                 for j, y in enumerate(banddata[i, :]):
-                    newdata[:, i + xnum*j] = [x, y]
+                    if color_by_parity is None:
+                        pardata = np.nan
+                    else:
+                        pardata = color_by_parity[i, j]
+                    newdata[:, i + xnum*j] = [x, y, i, j, pardata]
+
             frmt = 'o'
             if not ('o' in formatstr or '.' in formatstr):
                 frmt += '-'
-            self._ax.plot(
+            line, = self._ax.plot(
                 newdata[0], newdata[1], frmt, picker=picker, alpha=0,
-                label=label)
+                label=label, zorder=1000)
+            # attach data, so it can be used in picker callback function:
+            line.data = newdata
 
         # matplotlib sometimes adds padding; remove it:
         self._ax.set_xlim(min(self._x_data), max(self._x_data))
@@ -671,6 +701,40 @@ class BandPlotter:
         plt.legend(filteredhandles, filteredlabels, loc=loc)
 
 
+    def add_color_bar_for_parity(self, parity_direction='z',
+                                 location='right', pad=0.1):
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        """Add a color bar for the parity color code to the current axis.
+
+        :param parity_direction: is only needed for the label.
+        :param location: can be 'left', 'right', 'top' or 'bottom'
+        :param pad: the padding between the current axis and the new
+        colorbar, in inches.
+
+        """
+        if self._last_parity_scatter is None:
+            # no parity data plotted
+            return
+
+        # create an axes on the side of self._ax. cax will take 5% of
+        # self._ax and the padding between cax and self._ax will be
+        # fixed at *pad* inch.
+        divider = make_axes_locatable(self._ax)
+        cax = divider.append_axes(location, size="5%", pad=pad)
+
+        if location in ['top', 'bottom']:
+            orientation='horizontal'
+        else:
+            orientation='vertical'
+
+        cb = plt.colorbar(
+            self._last_parity_scatter,
+            cax=cax,
+            orientation=orientation,
+            ticklocation=location)
+        cb.set_label('{0}-parity'.format(parity_direction))
+
+
     def add_image_inset(self, filename, loc=4, zoom=1, transpose=False):
         """
         Add a raster image to the plot, according to the legend location loc.
@@ -694,7 +758,6 @@ class BandPlotter:
         arr_eps = plt.imread(filename)
         if transpose:
             arr_eps = arr_eps.transpose((1, 0, 2))
-        print (arr_eps.shape)
         imagebox = OffsetImage(arr_eps, zoom=zoom)
         ab = AnchoredOffsetbox(loc=loc, child=imagebox, frameon=False)
         self._ax.add_artist(ab)

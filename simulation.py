@@ -700,7 +700,8 @@ class Simulation(object):
             self, title='', crop_y=True,
             x_axis_hint=defaults.default_x_axis_hint,
             show=False, block=True, save=True,
-            add_epsilon_as_inset=False):
+            add_epsilon_as_inset=False,
+            color_by_parity=False):
         """Plot dispersion relation of all bands calculated along all
         k vectors.
 
@@ -746,6 +747,12 @@ class Simulation(object):
         If a .csv file with projected band data exists, projected bands
         will be plotted, band gaps not.
 
+        :param add_epsilon_as_inset: epsilon,png will be added as inset. See
+        defaults.py for parameters like size and location.
+        :param color_by_parity: Specify 'y' or 'z' to color the plot
+        lines with the data taken from the parity files
+        <jobname>_<mode>[z/y]parity.csv.
+
         TODO: add subplots for each file in argument 'comparison_files=[]'
 
         """
@@ -766,7 +773,8 @@ class Simulation(object):
                 self.geometry.substrate_index if self.geometry.is3D
                 else False),
             projected_bands=projected,
-            add_epsilon_as_inset=add_epsilon_as_inset
+            add_epsilon_as_inset=add_epsilon_as_inset,
+            color_by_parity=color_by_parity
         )
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)

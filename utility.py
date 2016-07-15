@@ -745,7 +745,8 @@ def distribute_pattern_images(
 def do_runmode(
         sim, runmode, num_processors, bands_plot_title, plot_crop_y,
         x_axis_hint, convert_field_patterns, field_pattern_plot_k_selection,
-        field_pattern_plot_filetype='pdf', project_bands_list=None):
+        field_pattern_plot_filetype='pdf', project_bands_list=None,
+        color_by_parity=False):
     """Start a job on the sim object, according to runmode.
 
     :param sim: the Simulation object
@@ -811,6 +812,9 @@ def do_runmode(
         have exactly one entry for each k-vector of the current
         simulation. Or leave this unspecified, if there are no bands to
         be projected.
+    :param color_by_parity:
+        Specify 'y' or 'z' to color the plot lines with the data taken
+        from the parity files <jobname>_<mode>[z/y]parity.csv.
     :return: the simulation object
 
     """
@@ -835,7 +839,8 @@ def do_runmode(
         sim.draw_bands(
             title=bands_plot_title, crop_y=plot_crop_y,
             x_axis_hint=x_axis_hint,
-            add_epsilon_as_inset=defaults.add_epsilon_as_inset)
+            add_epsilon_as_inset=defaults.add_epsilon_as_inset,
+            color_by_parity=color_by_parity)
         # save mode patterns to pdf&png:
         if convert_field_patterns:
             sim.draw_field_patterns(
@@ -855,5 +860,6 @@ def do_runmode(
         sim.draw_bands(
             title=bands_plot_title, show=True, crop_y=plot_crop_y,
             x_axis_hint=x_axis_hint, save=False,
-            add_epsilon_as_inset=defaults.add_epsilon_as_inset)
+            add_epsilon_as_inset=defaults.add_epsilon_as_inset,
+            color_by_parity=color_by_parity)
     return sim

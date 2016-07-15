@@ -56,7 +56,7 @@ def main():
 
     sim = TriHoles2D_Waveguide(
         material='SiN',
-        radius=0.380,
+        radius=0.340,
         mode='te',
         numbands=40,
         k_steps=ksteps,

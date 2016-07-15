@@ -15,6 +15,7 @@
 from __future__ import division, print_function
 from subprocess import check_output
 import re
+import numpy as np
 
 
 #mpb_call = 'mpb'
@@ -211,6 +212,8 @@ tick_max_denominator = 1000
 # when plotting versus the k-index.
 correct_x_axis = not True
 
+color_by_parity_marker_size = 60
+
 add_epsilon_as_inset = False
 # The valid location codes are:
 #     'upper right'  : 1,
@@ -246,8 +249,15 @@ def default_onclick(event, bandplotter):
     
     print(thisline.get_label() + ' mode(s): ', end='')
     for i in ind:
-        print('k_index={0:.0f}, k_vec={2}, freq={1}; '.format(
-            xdata[i], ydata[i], xaxisformatter(xdata[i])), end='')
+        kindex = xdata[i]
+        freq = ydata[i]
+        bandindex = thisline.data[3, i]
+        parity = thisline.data[4, i]
+        s = 'bandnum={0}, k_index={1:.0f}, k_vec={2}, freq={3}'.format(
+            bandindex + 1, kindex, xaxisformatter(kindex), freq)
+        if np.isfinite(parity):
+            s += ', parity={0}'.format(parity)
+        print(s + '; ', end='')
     print()
 
     # Other idea (not implemented): display mode pattern if it was exported
