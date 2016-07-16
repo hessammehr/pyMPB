@@ -300,8 +300,10 @@ def TriHoles2D_Waveguide(
         supercell_size=5, resolution=32, mesh_size=7,
         ydirection=False,
         first_row_longitudinal_shift=0,
+        first_row_transversal_shift=0,
         first_row_radius=None,
         second_row_longitudinal_shift=0,
+        second_row_transversal_shift=0,
         second_row_radius=None,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
@@ -339,11 +341,16 @@ def TriHoles2D_Waveguide(
     want to use yparity data.
     :param first_row_longitudinal_shift: shifts the holes next to the
     waveguide by this amount, parallel to the waveguide direction.
+    :param first_row_transversal_shift: shifts the holes next to the
+    waveguide by this amount, perpendicular to the waveguide direction.
     :param first_row_radius: The radius of the holes next to the
     waveguide. If None (default), use radius.
     :param second_row_longitudinal_shift: shifts the holes in the second
     row next to the waveguide by this amount, parallel to the waveguide
     direction
+    :param second_row_transversal_shift: shifts the holes in the second
+    row next to the waveguide by this amount, perpendicular to the
+    waveguide direction
     :param second_row_radius: The radius of the holes in the second row
     next to the waveguide. If None (default), use radius.
     :param runmode: can be one of the following:
@@ -498,8 +505,10 @@ def TriHoles2D_Waveguide(
         supercell_size=supercell_size,
         ydirection=ydirection,
         first_row_longitudinal_shift=first_row_longitudinal_shift,
+        first_row_transversal_shift=first_row_transversal_shift,
         first_row_radius=first_row_radius,
         second_row_longitudinal_shift=second_row_longitudinal_shift,
+        second_row_transversal_shift=second_row_transversal_shift,
         second_row_radius=second_row_radius)
 
     if ydirection:
@@ -602,8 +611,15 @@ def TriHoles2D_Waveguide(
 
 def TriHolesSlab3D_Waveguide(
         material, radius, thickness, mode='te', numbands=8, k_steps=17,
-        ydirection=False, supercell_size=5, supercell_z=6,
+        supercell_size=5, supercell_z=6,
         resolution=32, mesh_size=7,
+        ydirection=False,
+        first_row_longitudinal_shift=0,
+        first_row_transversal_shift=0,
+        first_row_radius=None,
+        second_row_longitudinal_shift=0,
+        second_row_transversal_shift=0,
+        second_row_radius=None,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
@@ -631,9 +647,6 @@ def TriHolesSlab3D_Waveguide(
     between 0 and 0.5 to simulate. This can also be a list of the
     explicit k values (just scalar values for component along the
     waveguide axis) to be simulated.
-    :param ydirection: set this if the waveguide should point along y,
-    otherwise (default) it will point along x. Use the default if you
-    want to use yparity data.
     :param supercell_size: the length of the supercell perpendicular to the
     waveguide, in units of sqrt(3) times the lattice constant. If it is
     not a odd number, one will be added.
@@ -641,6 +654,23 @@ def TriHolesSlab3D_Waveguide(
     lattice constant
     :param resolution: described in MPB documentation
     :param mesh_size: described in MPB documentation
+    :param ydirection: set this if the waveguide should point along y,
+    otherwise (default) it will point along x. Use the default if you
+    want to use yparity data.
+    :param first_row_longitudinal_shift: shifts the holes next to the
+    waveguide by this amount, parallel to the waveguide direction.
+    :param first_row_transversal_shift: shifts the holes next to the
+    waveguide by this amount, perpendicular to the waveguide direction.
+    :param first_row_radius: The radius of the holes next to the
+    waveguide. If None (default), use radius.
+    :param second_row_longitudinal_shift: shifts the holes in the second
+    row next to the waveguide by this amount, parallel to the waveguide
+    direction
+    :param second_row_transversal_shift: shifts the holes in the second
+    row next to the waveguide by this amount, perpendicular to the
+    waveguide direction
+    :param second_row_radius: The radius of the holes in the second row
+    next to the waveguide. If None (default), use radius.
     :param runmode: can be one of the following:
         ''       : just create and return the simulation object
         'ctl'    : create the sim object and save the ctl file
@@ -780,7 +810,16 @@ def TriHolesSlab3D_Waveguide(
 
     # Create geometry and add objects.
     objects = get_triangular_phc_waveguide_air_rods(
-        radius, supercell_size, ydirection)
+        radius=radius,
+        supercell_size=supercell_size,
+        ydirection=ydirection,
+        first_row_longitudinal_shift=first_row_longitudinal_shift,
+        first_row_transversal_shift=first_row_transversal_shift,
+        first_row_radius=first_row_radius,
+        second_row_longitudinal_shift=second_row_longitudinal_shift,
+        second_row_transversal_shift=second_row_transversal_shift,
+        second_row_radius=second_row_radius)
+
     if ydirection:
         geom = Geometry(
             width='(* (sqrt 3) %i)' % supercell_size,
