@@ -74,8 +74,10 @@ def wheel(width, height, n, occupancy, separation, material, priority='None'):
 def get_triangular_phc_waveguide_air_rods(
         radius, supercell_size, ydirection=False,
         first_row_longitudinal_shift=0,
+        first_row_transversal_shift=0,
         first_row_radius=None,
         second_row_longitudinal_shift=0,
+        second_row_transversal_shift=0,
         second_row_radius=None):
     # make it odd:
     if supercell_size % 2 == 0:
@@ -92,6 +94,15 @@ def get_triangular_phc_waveguide_air_rods(
     else:
         r2 = second_row_radius
 
+    # template for hole positions perpendicular to waveguide direction:
+    perp_pos_template = '(* {0:.1f} (sqrt 3))'
+    perp_pos_template_row1 = perp_pos_template
+    if first_row_transversal_shift:
+        perp_pos_template_row1 = '(+ %s {1})' % perp_pos_template
+    perp_pos_template_row2 = perp_pos_template
+    if second_row_transversal_shift:
+        perp_pos_template_row2 = '(+ %s {1})' % perp_pos_template
+
     # Create geometry and add objects.
     # Note: (0, 0, 0) is the center of the unit cell.
     if ydirection:
@@ -102,7 +113,8 @@ def get_triangular_phc_waveguide_air_rods(
             [
 
                 Rod(
-                    x='(* %i (sqrt 3))' % cx,
+                    x=perp_pos_template_row2.format(
+                        cx, second_row_transversal_shift),
                     y=0 + second_row_longitudinal_shift,
                     material='air',
                     radius=r2)
@@ -113,7 +125,7 @@ def get_triangular_phc_waveguide_air_rods(
             [
 
                 Rod(
-                    x='(* %i (sqrt 3))' % cx,
+                    x=perp_pos_template.format(cx),
                     y=0,
                     material='air',
                     radius=radius)
@@ -125,7 +137,8 @@ def get_triangular_phc_waveguide_air_rods(
             # first set of holes next to waveguide:
             [
                 Rod(
-                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
+                    x=perp_pos_template_row1.format(
+                        cx + 0.5, first_row_transversal_shift),
                     y=0.5 + first_row_longitudinal_shift,
                     material='air',
                     radius=r1)
@@ -135,7 +148,7 @@ def get_triangular_phc_waveguide_air_rods(
             # third set of holes next to waveguide:
             [
                 Rod(
-                    x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
+                    x=perp_pos_template.format(cx + 0.5),
                     y=0.5,
                     material='air',
                     radius=radius)
@@ -145,7 +158,7 @@ def get_triangular_phc_waveguide_air_rods(
             # remaining perimeter holes:
             [
                  Rod(
-                     x='(* {0:.1f} (sqrt 3))'.format(cx + 0.5),
+                     x=perp_pos_template.format(cx + 0.5),
                      y=0.5,
                      material='air',
                      radius=radius)
@@ -161,7 +174,8 @@ def get_triangular_phc_waveguide_air_rods(
 
                 Rod(
                     x=0 + second_row_longitudinal_shift,
-                    y='(* %i (sqrt 3))' % cy,
+                    y=perp_pos_template_row2.format(
+                        cy, second_row_transversal_shift),
                     material='air',
                     radius=r2)
                 for cy in [-1, 1]
@@ -172,7 +186,7 @@ def get_triangular_phc_waveguide_air_rods(
 
                 Rod(
                     x=0,
-                    y='(* %i (sqrt 3))' % cy,
+                    y=perp_pos_template.format(cy),
                     material='air',
                     radius=radius)
                 for cy in list(range(-sch, -1)) + list(range(2, sch + 1))
@@ -184,7 +198,8 @@ def get_triangular_phc_waveguide_air_rods(
             [
                 Rod(
                     x=0.5 + first_row_longitudinal_shift,
-                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
+                    y=perp_pos_template_row1.format(
+                        cy + 0.5, first_row_transversal_shift),
                     material='air',
                     radius=r1)
                 for cy in [-1, 0]
@@ -194,7 +209,7 @@ def get_triangular_phc_waveguide_air_rods(
             [
                 Rod(
                     x=0.5,
-                    y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
+                    y=perp_pos_template.format(cy + 0.5),
                     material='air',
                     radius=radius)
                 for cy in [-2, 1]
@@ -204,7 +219,7 @@ def get_triangular_phc_waveguide_air_rods(
             [
                  Rod(
                      x=0.5,
-                     y='(* {0:.1f} (sqrt 3))'.format(cy + 0.5),
+                     y=perp_pos_template.format(cy + 0.5),
                      material='air',
                      radius=radius)
                  for cy in list(range(-sch, -2)) + list(range(2, sch + 1))
