@@ -274,6 +274,10 @@ def draw_bands(
         if projected_bands:
             fname = '{0}_{1}_projected.csv'.format(jobname, mode)
             projdata = loadtxt(fname, delimiter=',')
+            if projdata.shape[1] % 2 != 0:
+                # knums added in first column, drop it:
+                projdata = projdata[:, 1:]
+            print(projdata)
             if light_cone and mask_proj_bands_above_light_line:
                 # ignore projected bands above the light line:
                 mask = np.zeros_like(projdata, dtype=np.bool)

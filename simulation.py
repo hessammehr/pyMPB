@@ -575,8 +575,14 @@ class Simulation(object):
             # format is %.6f, because MPB only outputs so many digits:
             np.savetxt(
                 fnamebase.format('_ranges'),
-                np.array([bandsmin, bandsmax]).transpose(),
-                fmt='%.6f', delimiter=', ')
+                np.array(
+                    [np.arange(1, self.numbands + 1),
+                     bandsmin,
+                     bandsmax
+                     ]).transpose(),
+                header='bandnum, min, max',
+                fmt=['%.0f', '%.6f', '%.6f'],
+                delimiter=', ')
 
             # if project_bands_list is supplied, a csv with the continuum
             # band ranges is created:
@@ -600,6 +606,9 @@ class Simulation(object):
                             jobname + '_' + mode + '_ranges.csv')
                         try:
                             rng = np.loadtxt(filename, delimiter=',')
+                            if rng.shape[1] == 3:
+                                # drop band numbers:
+                                rng = rng[:, 1:]
                             if rng.shape[1] != 2:
                                 log.warning(
                                     'file "{0}" is malformed.'.format(
@@ -626,13 +635,21 @@ class Simulation(object):
                         # min/max):
                         for i in range(len(ranges)):
                             ranges[i] = (ranges[i][:numbands]).flatten()
-                        contibands = np.array(ranges)
-                        # format is %.6f, because MPB only outputs so many digits:
+                        contibands = np.empty((len(ranges), 1 + 2 * numbands))
+                        contibands[:, 0] = np.arange(1, len(ranges) + 1)
+                        contibands[:, 1:] = np.array(ranges)
+                        # format is %.6f, because MPB only outputs so
+                        # many digits:
                         np.savetxt(
                             fnamebase.format('_projected'),
                             contibands,
-                            fmt='%.6f', delimiter=', ')
-
+                            header=', '.join(
+                                ['knum'] +
+                                ['band{0} {1}'.format(i, m)
+                                 for i in range(1, numbands + 1)
+                                 for m in ['min', 'max']]),
+                            fmt=['%.0f'] + ['%.6f'] * 2 * numbands,
+                            delimiter=', ')
 
         if not path.exists(self.eps_file) and path.isfile(self.eps_file + '~'):
             # The epsilon.h5 file was renamed before to mark it as temporary.
