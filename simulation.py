@@ -518,8 +518,19 @@ class Simulation(object):
         :param project_bands_list: a list of simulation folders
         (strings), with previously run simulations containing the bands
         to be projected. The list must have exactly one entry for each
-        k-vector of the current simulation. Or leave this unspecified,
-        if there are no bands to be projected.
+        k-vector of the current simulation, or only one entry if the gap
+        to plot stays the same for all k-vectors.
+
+        In both these cases, (and when the list is empty), a
+        jobname_projected.csv file will be created (empty if empty
+        list), which will be read when the bands are plotted in
+        draw_bands.
+
+        Leave this None if there are no bands to be projected, then no
+        jobname_projected.csv file will be created (in this case the
+        bands plot made in draw_bands will contain automatically found
+        band gaps.
+
         :return: None
         """
         #
@@ -586,9 +597,10 @@ class Simulation(object):
 
             # if project_bands_list is supplied, a csv with the continuum
             # band ranges is created:
-            if project_bands_list:
-                if (self.kspace.count_interpolated() !=
-                        len(project_bands_list)):
+            if project_bands_list is not None:
+                if (len(project_bands_list) > 1 and
+                    self.kspace.count_interpolated() !=
+                            len(project_bands_list)):
                     log.warning(
                         'project_bands_list supplied to '
                          'Simulation.postprocess does not have the same '
@@ -605,7 +617,7 @@ class Simulation(object):
                             folder,
                             jobname + '_' + mode + '_ranges.csv')
                         try:
-                            rng = np.loadtxt(filename, delimiter=',')
+                            rng = np.loadtxt(filename, delimiter=',', ndmin=2)
                             if rng.shape[1] == 3:
                                 # drop band numbers:
                                 rng = rng[:, 1:]
@@ -628,6 +640,7 @@ class Simulation(object):
                                 )
                             )
                             break
+
                     # only continue if we did not abort because we could
                     # not load a file:
                     if len(ranges) == len(project_bands_list):
@@ -635,21 +648,32 @@ class Simulation(object):
                         # min/max):
                         for i in range(len(ranges)):
                             ranges[i] = (ranges[i][:numbands]).flatten()
-                        contibands = np.empty((len(ranges), 1 + 2 * numbands))
-                        contibands[:, 0] = np.arange(1, len(ranges) + 1)
-                        contibands[:, 1:] = np.array(ranges)
-                        # format is %.6f, because MPB only outputs so
-                        # many digits:
-                        np.savetxt(
-                            fnamebase.format('_projected'),
-                            contibands,
-                            header=', '.join(
-                                ['knum'] +
-                                ['band{0} {1}'.format(i, m)
-                                 for i in range(1, numbands + 1)
-                                 for m in ['min', 'max']]),
-                            fmt=['%.0f'] + ['%.6f'] * 2 * numbands,
-                            delimiter=', ')
+                        if len(ranges) == 0:
+                            # No projected bands supplied. This is OK if we
+                            # don't want to plot any band gaps or projected
+                            # continuum bands. In this case, we write an
+                            # empty _projected file:
+                            np.savetxt(
+                                fnamebase.format('_projected'),
+                                [],
+                                header='no projected bands')
+                        else:
+                            contibands = np.empty(
+                                (len(ranges), 1 + 2 * numbands))
+                            contibands[:, 0] = np.arange(1, len(ranges) + 1)
+                            contibands[:, 1:] = np.array(ranges)
+                            # format is %.6f, because MPB only outputs so
+                            # many digits:
+                            np.savetxt(
+                                fnamebase.format('_projected'),
+                                contibands,
+                                header=', '.join(
+                                    ['knum'] +
+                                    ['band{0} {1}'.format(i, m)
+                                     for i in range(1, numbands + 1)
+                                     for m in ['min', 'max']]),
+                                fmt=['%.0f'] + ['%.6f'] * 2 * numbands,
+                                delimiter=', ')
 
         if not path.exists(self.eps_file) and path.isfile(self.eps_file + '~'):
             # The epsilon.h5 file was renamed before to mark it as temporary.

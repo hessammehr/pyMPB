@@ -144,7 +144,7 @@ def TriHoles2D(
         plot_crop_y=True, # automatic cropping
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_selection=(0, 2),
+        field_pattern_plot_k_selection=None,
         x_axis_hint=[defaults.default_x_axis_hint, kspace][kspace.has_labels()]
     )
 
@@ -290,7 +290,7 @@ def TriHolesSlab3D(
         plot_crop_y=0.8 / geom.substrate_index,
         convert_field_patterns=convert_field_patterns,
         # don't add gamma point a second time (index 3):
-        field_pattern_plot_k_selection=(0, 2),
+        field_pattern_plot_k_selection=None,
         x_axis_hint=[defaults.default_x_axis_hint, kspace][kspace.has_labels()]
     )
 
@@ -307,6 +307,7 @@ def TriHoles2D_Waveguide(
         second_row_radius=None,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
+        plot_complete_band_gap=False,
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
         convert_field_patterns=False,
         job_name_suffix='', bands_title_appendix='',
@@ -366,6 +367,11 @@ def TriHoles2D_Waveguide(
     contain the simulations of the unperturbed PhC, which is needed for
     the projections perpendicular to the waveguide direction. If the
     folder contains simulations run before, their data will be reused.
+    :param plot_complete_band_gap: If this is False, the band gap will be a
+    function of the k component along the waveguide. For each k,
+    a simulation with unperturbed photonic crystal will be run to get
+    the data. If this is True, only one unperturbed simulation will be
+    run to find the full direction independent bandgap.
     :param save_field_patterns_kvecs: a list of k-vectors (3-tuples),
     which indicates where field pattern h5 files are generated during
     the simulation (only at bands in save_field_patterns_bandnums)
@@ -413,74 +419,152 @@ def TriHoles2D_Waveguide(
     else:
         k_points = np.array(k_steps)
 
-    # Note: in the following, I use a triangular lattice,
-    # which is orientated such that the Gamma->K direction points
-    # towards y in cartesian coordinates. If ydirection is False, it does
-    # not matter, because the projected bands stay the same.
-
-    # In the triangular lattice, in the basis of its reciprocal basis
-    # vectors, this is the K' point, i.e. die boundary of the first
-    # brillouin zone in the rectangular lattice, onto which we need to
-    # project (see also : Steven G. Johnson et al., "Linear waveguides
-    # in photonic-crystal slabs", Phys. Rev. B, Vol. 62, Nr.12,
-    # 8212-8222 (2000); page 8216 & Fig. 8):
-    rectBZ_K = np.array((0.25, -0.25))
-    # the M point in the triangular lattice reciprocal basis, which points
-    # along +X (perpendicular to a waveguide in k_y direction):
-    # (note: if k_y is greater than 1/3, we leave the 1st BZ in +x
-    # direction. But this is OK and we calculate it anyway, because it
-    # does not change the projection. If we want to optimize
-    # calculation time some time, we could limit this.)
-    triBZ_M = np.array((0.5, 0.5))
-
     # This list will be forwarded later to this defect simulation's
     # post-process. It contains the folder paths of unperturbed
-    # simulations for each k-vec of this simulation:
+    # simulations for each k-vec of this simulation (or only one simulation,
+    # if the plotted band gap does not change from k-vec to k-vec):
     project_bands_list = []
 
-    # now, see if we need to simulate:
-    for ky in k_points:
-        jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
-        jobname = unperturbed_jobname + jobname_suffix
-        project_bands_list.append(path.join(repo, jobname))
-        range_file_name = path.join(
-            repo, jobname, jobname + '_' + mode + '_ranges.csv')
-        if not path.isfile(range_file_name):
-            # does not exist, so start simulation:
-            log.info('unperturbed structure not yet simulated at '
-                     'k_wg={0}. Running now...'.format(ky))
-            kspace = KSpace(
-                points_list=[
-                    rectBZ_K * ky * 2,
-                    rectBZ_K * ky * 2 + triBZ_M
-                ],
-                k_interpolation=15,)
+    if plot_complete_band_gap:
+        if mode == 'te':
+            # We only need a simulation of the first two bands at the M
+            # and the K point to get the band gap.
 
-            sim = TriHoles2D(
-                material=material,
-                radius=radius,
-                custom_k_space=kspace,
-                numbands=defaults.num_projected_bands,
-                resolution=resolution,
-                mesh_size=mesh_size,
-                runmode='sim',
-                num_processors=num_processors,
-                containing_folder=repo,
-                save_field_patterns=False,
-                convert_field_patterns=False,
-                job_name_suffix=jobname_suffix,
-                bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
-                modes=[mode]
-            )
+            # first, see if we need to simulate:
+            jobname_suffix = '_for_gap'
+            jobname = unperturbed_jobname + jobname_suffix
+            project_bands_list.append(path.join(repo, jobname))
+            range_file_name = path.join(
+                repo, jobname, jobname + '_' + mode + '_ranges.csv')
+            if not path.isfile(range_file_name):
+                # does not exist, so start simulation:
+                log.info('unperturbed structure not yet simulated for '
+                         'band gap. Running now...')
+                kspace = KSpace(
+                    points_list=[(0, 0.5, 0), ('(/ -3)', '(/ 3)', 0)],
+                    k_interpolation=0,
+                    point_labels=['M', 'K'])
 
-            if not sim:
-                log.error(
-                    'an error occurred during simulation of unperturbed '
-                    'structure. See the .out file in {0}'.format(path.join(
-                        repo, jobname
-                    ))
+                sim = TriHoles2D(
+                    material=material,
+                    radius=radius,
+                    custom_k_space=kspace,
+                    numbands=3, # 3 so the band plot looks better ;)
+                    resolution=resolution,
+                    mesh_size=mesh_size,
+                    runmode='sim' if runmode.startswith('s') else '',
+                    num_processors=num_processors,
+                    containing_folder=repo,
+                    save_field_patterns=False,
+                    convert_field_patterns=False,
+                    job_name_suffix=jobname_suffix,
+                    bands_title_appendix=', for band gap',
+                    modes=[mode]
                 )
-                return
+
+                if not sim:
+                    log.error(
+                        'an error occurred during simulation of unperturbed '
+                        'structure. See the .out file in {0}'.format(
+                            path.join(
+                                repo, jobname
+                            ))
+                    )
+                    return
+
+                # Now, the _ranges.csv file is wrong, because we did not
+                # simulate the full K-Space, especially Gamma is
+                # missing. Correct the ranges so the first band starts
+                # at 0 and the second band is the last band and goes to
+                # a very high value. This way, there is only the band
+                # gap left between the first and second continuum bands.
+
+                # Load the _ranges.csv file to get the band gap:
+                ranges = np.loadtxt(range_file_name, delimiter=',', ndmin=2)
+                # tinker:
+                ranges[0, 1] = 0
+                ranges[1, 2] = ranges[1, 2] * 100
+                # save file again, drop higher bands:
+                np.savetxt(
+                    range_file_name,
+                    ranges[:2, :],
+                    header='bandnum, min, max',
+                    fmt=['%.0f', '%.6f', '%.6f'],
+                    delimiter=', ')
+        else:
+            # For high refractive indices and big radius, there are some small
+            # gaps for TM modes. But we need to simulate more bands and
+            # more k-points than for the TE modes.
+            # I don't need it, so it is not implemented yet:
+            log.warning('plot_complete_band_gap not implemented for {0}'
+                        ' modes yet.'.format(mode))
+
+
+    else:
+        # Note: in the following, I use a triangular lattice, which is
+        # orientated such that the Gamma->K direction points towards y
+        # in cartesian coordinates. If ydirection is False, it does not
+        # matter, because the projected bands stay the same.
+
+        # In the triangular lattice, in the basis of its reciprocal
+        # basis vectors, this is the K' point, i.e. die boundary of the
+        # first brillouin zone in the rectangular lattice, onto which we
+        # need to project (see also : Steven G. Johnson et al., "Linear
+        # waveguides in photonic-crystal slabs", Phys. Rev. B, Vol. 62,
+        # Nr.12, 8212-8222 (2000); page 8216 & Fig. 8):
+        rectBZ_K = np.array((0.25, -0.25))
+        # the M point in the triangular lattice reciprocal basis, which
+        # points along +X (perpendicular to a waveguide in k_y
+        # direction): (note: if k_y is greater than 1/3, we leave the
+        # 1st BZ in +x direction. But this is OK and we calculate it
+        # anyway, because it does not change the projection. If we want
+        # to optimize calculation time some time, we could limit this.)
+        triBZ_M = np.array((0.5, 0.5))
+
+        # now, see if we need to simulate:
+        for ky in k_points:
+            jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
+            jobname = unperturbed_jobname + jobname_suffix
+            project_bands_list.append(path.join(repo, jobname))
+            range_file_name = path.join(
+                repo, jobname, jobname + '_' + mode + '_ranges.csv')
+            if not path.isfile(range_file_name):
+                # does not exist, so start simulation:
+                log.info('unperturbed structure not yet simulated at '
+                         'k_wg={0}. Running now...'.format(ky))
+                kspace = KSpace(
+                    points_list=[
+                        rectBZ_K * ky * 2,
+                        rectBZ_K * ky * 2 + triBZ_M
+                    ],
+                    k_interpolation=15,)
+
+                sim = TriHoles2D(
+                    material=material,
+                    radius=radius,
+                    custom_k_space=kspace,
+                    numbands=defaults.num_projected_bands,
+                    resolution=resolution,
+                    mesh_size=mesh_size,
+                    runmode='sim' if runmode.startswith('s') else '',
+                    num_processors=num_processors,
+                    containing_folder=repo,
+                    save_field_patterns=False,
+                    convert_field_patterns=False,
+                    job_name_suffix=jobname_suffix,
+                    bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
+                    modes=[mode]
+                )
+
+                if not sim:
+                    log.error(
+                        'an error occurred during simulation of unperturbed '
+                        'structure. See the .out file in {0}'.format(
+                            path.join(
+                                repo, jobname
+                            ))
+                    )
+                    return
 
     # If a shift is used, inversion symmetry is broken:
     if ((first_row_longitudinal_shift or second_row_longitudinal_shift) and
@@ -610,7 +694,7 @@ def TriHoles2D_Waveguide(
 
 
 def TriHolesSlab3D_Waveguide(
-        material, radius, thickness, mode='te', numbands=8, k_steps=17,
+        material, radius, thickness, mode='zeven', numbands=8, k_steps=17,
         supercell_size=5, supercell_z=6,
         resolution=32, mesh_size=7,
         ydirection=False,
@@ -622,6 +706,7 @@ def TriHolesSlab3D_Waveguide(
         second_row_radius=None,
         runmode='sim', num_processors=2,
         projected_bands_folder='../projected_bands_repo',
+        plot_complete_band_gap=False,
         save_field_patterns_kvecs=list(), save_field_patterns_bandnums=list(),
         convert_field_patterns=False,
         job_name_suffix='', bands_title_appendix='',
@@ -641,7 +726,7 @@ def TriHolesSlab3D_Waveguide(
     value (float)
     :param radius: the radius of holes in units of the lattice constant
     :param thickness: slab thickness in units of the lattice constant
-    :param mode: the mode to run. Possible are 'te' and 'tm'.
+    :param mode: the mode to run. Possible are 'zeven' and 'zodd'.
     :param numbands: number of bands to calculate
     :param k_steps: number of k steps along the waveguide direction
     between 0 and 0.5 to simulate. This can also be a list of the
@@ -684,6 +769,11 @@ def TriHolesSlab3D_Waveguide(
     contain the simulations of the unperturbed PhC, which is needed for
     the projections perpendicular to the waveguide direction. If the
     folder contains simulations run before, their data will be reused.
+    :param plot_complete_band_gap: If this is False, the band gap will be a
+    function of the k component along the waveguide. For each k,
+    a simulation with unperturbed photonic crystal will be run to get
+    the data. If this is True, only one unperturbed simulation will be
+    run to find the full direction independent bandgap.
     :param save_field_patterns_kvecs: a list of k-vectors (3-tuples),
     which indicates where field pattern h5 files are generated during
     the simulation (only at bands in save_field_patterns_bandnums)
@@ -731,76 +821,169 @@ def TriHolesSlab3D_Waveguide(
     else:
         k_points = np.array(k_steps)
 
-    # Note: in the following, I use a triangular lattice,
-    # which is orientated such that the Gamma->K direction points
-    # towards y in cartesian coordinates. If ydirection is False, it does
-    # not matter, because the projected bands stay the same.
-
-    # In the triangular lattice, in the basis of its reciprocal basis
-    # vectors, this is the K' point, i.e. die boundary of the first
-    # brillouin zone in the rectangular lattice, onto which we need to
-    # project (see also : Steven G. Johnson et al., "Linear waveguides
-    # in photonic-crystal slabs", Phys. Rev. B, Vol. 62, Nr.12,
-    # 8212-8222 (2000); page 8216 & Fig. 8):
-    rectBZ_K = np.array((0.25, -0.25))
-    # the M point in the triangular lattice reciprocal basis, which points
-    # along +X (perpendicular to a waveguide in k_y direction):
-    # (note: if k_y is greater than 1/3, we leave the 1st BZ in +x
-    # direction. But this is OK and we calculate it anyway, because it
-    # does not change the projection. If we want to optimize
-    # calculation time some time, we could limit this.)
-    triBZ_M = np.array((0.5, 0.5))
-
     # This list will be forwarded later to this defect simulation's
     # post-process. It contains the folder paths of unperturbed
-    # simulations for each k-vec of this simulation:
+    # simulations for each k-vec of this simulation (or only one simulation,
+    # if the plotted band gap does not change from k-vec to k-vec):
     project_bands_list = []
 
-    # now, see if we need to simulate:
-    for ky in k_points:
-        jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
-        jobname = unperturbed_jobname + jobname_suffix
-        project_bands_list.append(path.join(repo, jobname))
-        range_file_name = path.join(
-            repo, jobname, jobname + '_' + mode + '_ranges.csv')
-        if not path.isfile(range_file_name):
-            # does not exist, so start simulation:
-            log.info('unperturbed structure not yet simulated at '
-                     'k_wg={0}. Running now...'.format(ky))
-            kspace = KSpace(
-                points_list=[
-                    rectBZ_K * ky * 2,
-                    rectBZ_K * ky * 2 + triBZ_M
-                ],
-                k_interpolation=15,)
+    if plot_complete_band_gap:
+        if mode == 'zeven':
+            # We only need a simulation of the first two bands at the M
+            # and the K point to get the band gap.
 
-            sim = TriHolesSlab3D(
-                material=material,
-                radius=radius,
-                thickness=thickness,
-                custom_k_space=kspace,
-                numbands=defaults.num_projected_bands,
-                resolution=resolution,
-                supercell_z=supercell_z,
-                mesh_size=mesh_size,
-                runmode='sim' if runmode.startswith('s') else '',
-                num_processors=num_processors,
-                containing_folder=repo,
-                save_field_patterns=False,
-                convert_field_patterns=False,
-                job_name_suffix=jobname_suffix,
-                bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
-                modes=[mode]
-            )
+            # first, see if we need to simulate:
+            jobname_suffix = '_for_gap'
+            jobname = unperturbed_jobname + jobname_suffix
+            project_bands_list.append(path.join(repo, jobname))
+            range_file_name = path.join(
+                repo, jobname, jobname + '_' + mode + '_ranges.csv')
+            if not path.isfile(range_file_name):
+                # does not exist, so start simulation:
+                log.info('unperturbed structure not yet simulated for '
+                         'band gap. Running now...')
+                kspace = KSpace(
+                    points_list=[(0, 0.5, 0), ('(/ -3)', '(/ 3)', 0)],
+                    k_interpolation=0,
+                    point_labels=['M', 'K'])
 
-            if not sim:
-                log.error(
-                    'an error occurred during simulation of unperturbed '
-                    'structure. See the .out file in {0}'.format(path.join(
-                        repo, jobname
-                    ))
+                sim = TriHolesSlab3D(
+                    material=material,
+                    radius=radius,
+                    thickness=thickness,
+                    custom_k_space=kspace,
+                    numbands=3, # 3 so the band plot looks better ;)
+                    resolution=resolution,
+                    mesh_size=mesh_size,
+                    supercell_z=supercell_z,
+                    runmode='sim' if runmode.startswith('s') else '',
+                    num_processors=num_processors,
+                    containing_folder=repo,
+                    save_field_patterns=False,
+                    convert_field_patterns=False,
+                    job_name_suffix=jobname_suffix,
+                    bands_title_appendix=', for band gap',
+                    modes=[mode]
                 )
-                return
+
+                if not sim:
+                    log.error(
+                        'an error occurred during simulation of unperturbed '
+                        'structure. See the .out file in {0}'.format(
+                            path.join(
+                                repo, jobname
+                            ))
+                    )
+                    return
+
+                # Now, the _ranges.csv file is wrong, because we did not
+                # simulate the full K-Space, especially Gamma is
+                # missing. Correct the ranges so the first band starts
+                # at 0 and the second band is the last band and goes to
+                # a very high value. This way, there is only the band
+                # gap left between the first and second continuum bands.
+
+                # Load the _ranges.csv file to get the band gap:
+                ranges = np.loadtxt(range_file_name, delimiter=',', ndmin=2)
+                # tinker:
+                ranges[0, 1] = 0
+                ranges[1, 2] = ranges[1, 2] * 100
+                # save file again, drop higher bands:
+                np.savetxt(
+                    range_file_name,
+                    ranges[:2, :],
+                    header='bandnum, min, max',
+                    fmt=['%.0f', '%.6f', '%.6f'],
+                    delimiter=', ')
+        else:
+            # For high refractive indices and big radius, there are some
+            # small gaps for TM modes. But we need to simulate more
+            # bands and more k-points than for the TE modes. This is
+            # especially difficult (or even impossible?), since
+            # quasi-guided PhC bands (which narrow the band gap) are
+            # hidden by continuum modes above the light line in 3D.
+            # I don't need it, so it is not implemented yet:
+            log.warning('plot_complete_band_gap not implemented for {0}'
+                        ' modes yet.'.format(mode))
+
+    else:
+        # Note: in the following, I use a triangular lattice, which is
+        # orientated such that the Gamma->K direction points towards y
+        # in cartesian coordinates. If ydirection is False, it does not
+        # matter, because the projected bands stay the same.
+
+        # In the triangular lattice, in the basis of its reciprocal
+        # basis vectors, this is the K' point, i.e. die boundary of the
+        # first brillouin zone in the rectangular lattice, onto which we
+        # need to project (see also : Steven G. Johnson et al., "Linear
+        # waveguides in photonic-crystal slabs", Phys. Rev. B, Vol. 62,
+        # Nr.12, 8212-8222 (2000); page 8216 & Fig. 8):
+        rectBZ_K = np.array((0.25, -0.25))
+        # the M point in the triangular lattice reciprocal basis, which
+        # points along +X (perpendicular to a waveguide in k_y
+        # direction): (note: if k_y is greater than 1/3, we leave the
+        # 1st BZ in +x direction. But this is OK and we calculate it
+        # anyway, because it does not change the projection. If we want
+        # to optimize calculation time some time, we could limit this.)
+        triBZ_M = np.array((0.5, 0.5))
+
+        # now, see if we need to simulate:
+        for ky in k_points:
+            jobname_suffix = '_projk{0:06.0f}'.format(ky*1e6)
+            jobname = unperturbed_jobname + jobname_suffix
+            project_bands_list.append(path.join(repo, jobname))
+            range_file_name = path.join(
+                repo, jobname, jobname + '_' + mode + '_ranges.csv')
+            if not path.isfile(range_file_name):
+                # does not exist, so start simulation:
+                log.info('unperturbed structure not yet simulated at '
+                         'k_wg={0}. Running now...'.format(ky))
+                kspace = KSpace(
+                    points_list=[
+                        rectBZ_K * ky * 2,
+                        rectBZ_K * ky * 2 + triBZ_M
+                    ],
+                    k_interpolation=15,)
+
+                sim = TriHolesSlab3D(
+                    material=material,
+                    radius=radius,
+                    thickness=thickness,
+                    custom_k_space=kspace,
+                    numbands=defaults.num_projected_bands,
+                    resolution=resolution,
+                    supercell_z=supercell_z,
+                    mesh_size=mesh_size,
+                    runmode='sim' if runmode.startswith('s') else '',
+                    num_processors=num_processors,
+                    containing_folder=repo,
+                    save_field_patterns=False,
+                    convert_field_patterns=False,
+                    job_name_suffix=jobname_suffix,
+                    bands_title_appendix=', at k_wg={0:0.3f}'.format(ky),
+                    modes=[mode]
+                )
+
+                if not sim:
+                    log.error(
+                        'an error occurred during simulation of unperturbed '
+                        'structure. See the .out file in {0}'.format(
+                            path.join(
+                                repo, jobname
+                            ))
+                    )
+                    return
+
+    # If a shift is used, inversion symmetry is broken:
+    if ((first_row_longitudinal_shift or second_row_longitudinal_shift) and
+        'mpbi' in defaults.mpb_call):
+            log.info('default MPB to use includes inversion symmetry: '
+                 '{0}. '.format(defaults.mpb_call) +
+                 'Shift of holes specified, which breaks inv. symmetry. '
+                 'Will fall back to MPB without inv. symm.: {0}'.format(
+                     defaults.mpb_call.replace('mpbi', 'mpb')
+                 ))
+            defaults.mpb_call = defaults.mpb_call.replace('mpbi', 'mpb')
 
     # make it odd:
     if supercell_size % 2 == 0:

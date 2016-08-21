@@ -271,22 +271,36 @@ def draw_bands(
             label=mode.upper(),
             crop_y=crop_y,
             color_by_parity=parities)
+
         if projected_bands:
             fname = '{0}_{1}_projected.csv'.format(jobname, mode)
-            projdata = loadtxt(fname, delimiter=',')
-            if projdata.shape[1] % 2 != 0:
-                # knums added in first column, drop it:
-                projdata = projdata[:, 1:]
-            print(projdata)
-            if light_cone and mask_proj_bands_above_light_line:
-                # ignore projected bands above the light line:
-                mask = np.zeros_like(projdata, dtype=np.bool)
-                numbands = projdata.shape[1] // 2
-                for i in range(numbands):
-                    if (projdata[:, 2 * i] > data[:, 4] / refr_index).all():
-                        mask[:, 2 * i:2 * i + 2] = True
-                projdata = np.ma.array(projdata, mask=mask)
-            plotter.add_continuum_bands(projdata)
+            with np.warnings.catch_warnings():
+                # ignore numpy warning if the file does not contain any
+                # data, just return empty ndarray:
+                np.warnings.simplefilter("ignore")
+                projdata = loadtxt(fname, delimiter=',', ndmin=2)
+            if projdata.shape[0] != 0:
+                if projdata.shape[1] % 2 != 0:
+                    # knums added in first column, drop it:
+                    projdata = projdata[:, 1:]
+
+                if light_cone and mask_proj_bands_above_light_line:
+                    # ignore projected bands above the light line:
+                    mask = np.zeros_like(projdata, dtype=np.bool)
+                    numbands = projdata.shape[1] // 2
+                    for i in range(numbands):
+                        if (projdata[:, 2 * i] >
+                                    data[:, 4] / refr_index).all():
+                            mask[:, 2 * i:2 * i + 2] = True
+                    projdata = np.ma.array(projdata, mask=mask)
+
+                if projdata.shape[0] == 1 and data.shape[0] != 1:
+                    # the same band ranges for all k-vecs:
+                    newproj = np.empty((data.shape[0], projdata.shape[1]))
+                    newproj[None, :] = projdata
+                    projdata = newproj
+
+                plotter.add_continuum_bands(projdata)
         if band_gaps:
             if light_cone:
                 gapbands = get_gap_bands(
