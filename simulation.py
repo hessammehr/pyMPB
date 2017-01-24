@@ -840,7 +840,7 @@ class Simulation(object):
 
     def draw_field_patterns(
             self, title='', only_k=None, show=False,
-            filetype=defaults.field_dist_filetype):
+            filetype='pdf'):
         """ Place all field pattern pngs in one diagram and save it to file.
         If only_k is None (default) all found images at all k-vec
         numbers will be added. Specify a tuple (from, to) to only

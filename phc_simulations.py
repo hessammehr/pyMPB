@@ -143,6 +143,7 @@ def TriHoles2D(
         sim, runmode, num_processors, draw_bands_title,
         plot_crop_y=True, # automatic cropping
         convert_field_patterns=convert_field_patterns,
+        field_pattern_plot_filetype=defaults.field_dist_filetype,
         # don't add gamma point a second time (index 3):
         field_pattern_plot_k_selection=None,
         x_axis_hint=[defaults.default_x_axis_hint, kspace][kspace.has_labels()]
@@ -289,7 +290,7 @@ def TriHolesSlab3D(
         sim, runmode, num_processors, draw_bands_title,
         plot_crop_y=0.8 / geom.substrate_index,
         convert_field_patterns=convert_field_patterns,
-        # don't add gamma point a second time (index 3):
+        field_pattern_plot_filetype=defaults.field_dist_filetype,
         field_pattern_plot_k_selection=None,
         x_axis_hint=[defaults.default_x_axis_hint, kspace][kspace.has_labels()]
     )
@@ -687,6 +688,7 @@ def TriHoles2D_Waveguide(
         plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_selection=field_pattern_plot_k_selection,
+        field_pattern_plot_filetype=defaults.field_dist_filetype,
         x_axis_hint=[5, "{1}" if ydirection else "{0}"],
         project_bands_list=project_bands_list,
         color_by_parity='y'
@@ -1120,6 +1122,7 @@ def TriHolesSlab3D_Waveguide(
         plot_crop_y=plot_crop_y,
         convert_field_patterns=convert_field_patterns,
         field_pattern_plot_k_selection=field_pattern_plot_k_selection,
+        field_pattern_plot_filetype=defaults.field_dist_filetype,
         x_axis_hint=[5, "{1}" if ydirection else "{0}"],
         project_bands_list=project_bands_list,
         color_by_parity='y'
