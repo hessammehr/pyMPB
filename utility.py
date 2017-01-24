@@ -441,7 +441,7 @@ def strip_format_spec(format_str):
 
 def distribute_pattern_images(
         imgfolder, dstfile_prefix, dstfile_type='pdf', borderpixel=5,
-        vertical_complex_pairs=defaults.field_dist_vertical_cmplx_comps,
+        vertical_complex_pairs=False,
         only_k=None, title='', show=False):
     """Read all pngs (from MPB simulation) from *imgfolder* and distribute
     them according to bandnumber and k vector number.

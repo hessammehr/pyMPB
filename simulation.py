@@ -864,6 +864,8 @@ class Simulation(object):
                 imgfolder=dirname,
                 dstfile_prefix=dstfile_prefix,
                 dstfile_type=filetype,
+                vertical_complex_pairs=defaults.
+                    field_dist_vertical_cmplx_comps,
                 only_k=only_k,
                 title=title,
                 show=show)
