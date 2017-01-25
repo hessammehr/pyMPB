@@ -310,7 +310,12 @@ class Simulation(object):
 
         """
         # make list of all field pattern h5 files:
-        filenames = glob1(self.workingdir, "*[edh].*.h5")
+        filenames = glob1(self.workingdir, "*.h5")
+        for exclude in ["epsilon.h5", defaults.temporary_epsh5, 'foo']:
+            d, f = path.split(path.join(self.workingdir, exclude))
+            to_remove = glob1(d, f)
+            for fname in to_remove:
+                filenames.remove(fname)
         if not filenames:
             return 0
 
@@ -370,8 +375,8 @@ class Simulation(object):
 
         # Build the regular expression pattern for parsing filenames:
 
-        # re that matches the field (e, d or h):
-        f = '[edh]'
+        # re that matches the output, i.e. field (e, d or h) or 'dpwr' etc.:
+        f = r'(?P<field>[edh]|hpwr|dpwr)'
         # re that matches the k number part, starting with '.':
         k = r'[.]k\d+'
         # re that matches the band number part, starting with '.':
@@ -395,9 +400,12 @@ class Simulation(object):
                 continue
             redict = m.groupdict()
             datasets = [redict.get('comp', None)]
-            if datasets[0] is None:
-                datasets = ['x', 'y', 'z']
-            datasets = [ds + ri for ri in ['.r', '.i'] for ds in datasets]
+            if redict['field'] in 'edh':
+                if datasets[0] is None:
+                    datasets = ['x', 'y', 'z']
+                datasets = [ds + ri for ri in ['.r', '.i'] for ds in datasets]
+            else:
+                datasets = ['data']
             if redict.get('mode', None) is not None:
                 # use mode name in folder name:
                 mode = redict['mode']

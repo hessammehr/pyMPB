@@ -139,13 +139,13 @@ def draw_bands(
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
-    The band data is loaded from previously saved .csv files.
-    (filenames: [*jobname* + '_' + *mode* + 'freqs.csv' for mode in
-    modes])
-
-    *x_axis_hint* gives a hint on which kind of ticks and labels should
-    be shown on the x-axis and provides the data needed. *x_axis_hint*
-    can be one of the following:
+    :param jobname: The band data is loaded from previously saved .csv
+    files. (filenames: [*jobname* + '_' + *mode* + 'freqs.csv' for mode
+    in modes])
+    :param modes: see *jobname*
+    :param x_axis_hint: gives a hint on which kind of ticks and labels
+    should be shown on the x-axis and provides the data needed.
+    *x_axis_hint* can be one of the following:
         -- integer number:
             The axis' labels will be the 3D k-vectors. The number
             denotes the number of major ticks and labels distributed on
@@ -166,36 +166,37 @@ def draw_bands(
             CustomAxisFormatter's hover data have not been set, it will
             be set here with the k-vectors read from the .csv file.
 
-    If you want to add the graph to an existing figure, supply a
-    BandPlotter with *custom_plotter*, otherwise (default:
-    custom_plotter=None) a new BandPlotter is created and returned.
-
-    *title* is the subplot's title.
-
-    If *crop_y* is true (default), the y-axis (frequency) will be
-    limited so that only frequency values are shown where all bands are
-    known. Alternatively, a numeric value of *crop_y* denotes the upper
-    frequency value where the plot will be cropped, or if *crop_y* is a
-    2-tuple, it denotes the minimum and maximum y-value.
-
-    If *band_gaps* is True, draw the band gaps (with colored boxes).
-
-    If *light_cone* is True, add a light cone and crop the bandgaps at
-    the light line. If the simulation was run on a substrate, light_cone
-    must be the index of the refraction of this substrate. The light
-    cone will then be scaled accordingly.
-
-    If *projected_bands* is True, add bands that span a range of
+    :param custom_plotter: If you want to add the graph to an existing
+    figure, supply a BandPlotter with *custom_plotter*, otherwise
+    (default: custom_plotter=None) a new BandPlotter is created and
+    returned.
+    :param title: the subplot's title.
+    :param crop_y: If this is true (default), the y-axis (frequency)
+    will be limited so that only frequency values are shown where all
+    bands are known. Alternatively, a numeric value of *crop_y* denotes
+    the upper frequency value where the plot will be cropped, or if
+    *crop_y* is a 2-tuple, it denotes the minimum and maximum y-value.
+    :param band_gaps: If True, draw the band gaps (with colored boxes).
+    :param light_cone: If True, add a light cone and crop the bandgaps
+    at the light line. If the simulation was run on a substrate,
+    light_cone must be the index of the refraction of this substrate.
+    The light cone will then be scaled accordingly.
+    :param projected_bands: If True, add bands that span a range of
     frequencies to the plot. Bandgaps are not drawn in this case. The
     data needed will be read from previously saved .csv files
     (filenames: [ jobname* + '_' + *mode* + '_projected.csv' for mode in
     modes]).
-
+    :param mask_proj_bands_above_light_line: If *projected_bands* is
+    True, some projected bands might be completely above the light line.
+    These bands will not be drawn, if *mask_proj_bands_above_light_line*
+    is True.
     :param add_epsilon_as_inset: epsilon,png will be added as inset. See
     defaults.py for parameters like size and location.
     :param color_by_parity: Specify 'y' or 'z' to color the plot lines
     with the data taken from the parity files
     <jobname>_<mode>[z/y]parity.csv.
+    :return: a created BandPlotter instance (if *custom_plotter*) was
+    None, or the *custom_plotter*.
 
     """
     if custom_plotter is None:

@@ -473,29 +473,27 @@ def distribute_pattern_images(
     """
     if not path.isdir(imgfolder):
         return 0
-    # make list of all field pattern h5 files:
-    filenames = glob1(imgfolder, "*[edh].*.png")
+    # make list of all field pattern png files:
+    filenames = glob1(imgfolder, "*.png")
     if not filenames:
         return 0
 
     # Build the regular expression pattern for parsing file names:
 
-    # re that matches the field (e, d or h):
-    f = r'(?P<field>[edh])'
+    # re that matches the output, i.e. field (e, d or h) or 'dpwr' etc.:
+    f = r'(?P<field>[edh]|hpwr|dpwr)'
     # re that matches the k number part, starting with '.':
     k = r'[.]k(?P<knum>\d+)'
     # re that matches the band number part, starting with '.':
     b = r'[.]b(?P<bandnum>\d+)'
-    # re that matches the field component (.x, .y or .z):
-    c = r'[.](?P<comp>[xyz])'
-    # re that matches real/imaginary part (.r or .i):
-    r = r'[.](?P<ri>[ri])'
+    # re that matches the dataset:
+    d = r'[.](?P<data>[xyz][.][ri]|data)'
     # re that matches anything following '.', which does not contain
     # another period (this should be the mode: te, tm, zodd etc.):
     m = r'(:?[.](?P<mode>[^.]+))?'
     # The final re pattern matches field pattern PNG file names:
     retest = re.compile(
-        ''.join([f, k, b, c, r, m, '.png']))
+        ''.join([f, k, b, d, m, '.png']))
 
     # Analyze files in folder and make dictionary with data for each
     # destination file:
@@ -509,18 +507,22 @@ def distribute_pattern_images(
             continue
         redict = m.groupdict()
         field = redict['field']
-        comp = redict['comp']
+        data = redict['data']
+        if data != 'data':
+            field += '_' + data.split('.')[0]
+            ri = data.split('.')[1]
+        else:
+            ri = '';
         mode = redict.get('mode', '')
         if mode:
             dstfile = '.'.join(
-                [dstfile_prefix, field, comp, mode, dstfile_type])
+                [dstfile_prefix, field, mode, dstfile_type])
         else:
             dstfile = '.'.join(
-                [dstfile_prefix, field, comp, dstfile_type])
+                [dstfile_prefix, field, dstfile_type])
         if dstfile not in dst_dict:
-            axtitle = '${0}_{1}$ field pattern{2}'.format(
-                field.upper(),
-                comp,
+            axtitle = '${0}{1}$ field pattern{2}'.format(
+                field[0].upper(), field[1:],
                 ', {0} mode'.format(mode) if mode else '')
             # dst_dict is a dictionary which keys are the unique
             # destination file names. The values are lists. The first
@@ -536,7 +538,6 @@ def distribute_pattern_images(
 
         bandnum = int(redict['bandnum'])
         knum = int(redict['knum'])
-        ri = redict['ri']
 
         # append to the sets of knum and ri of all png files going
         # to dstfile:
@@ -679,7 +680,8 @@ def distribute_pattern_images(
                     bandnum=b, ri={'r':'re', 'i':'im'}[c])
                 for b in bnums for c in ris]
         else:
-            klabelform = 'k{knum}.{ri}'
+            ris = ['.' + c if c else c for c in ris]
+            klabelform = 'k{knum}{ri}'
             xticks = [
                 klabelform.format(knum=k, ri=c) for k in knums for c in ris]
             yticks = [str(b) for b in bnums]
