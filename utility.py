@@ -487,7 +487,7 @@ def distribute_pattern_images(
     # re that matches the band number part, starting with '.':
     b = r'[.]b(?P<bandnum>\d+)'
     # re that matches the dataset:
-    d = r'[.](?P<data>[xyz][.][ri]|data)'
+    d = r'(:?[.](?P<data>[xyz][.][ri]|data))?'
     # re that matches anything following '.', which does not contain
     # another period (this should be the mode: te, tm, zodd etc.):
     m = r'(:?[.](?P<mode>[^.]+))?'
@@ -508,7 +508,7 @@ def distribute_pattern_images(
         redict = m.groupdict()
         field = redict['field']
         data = redict['data']
-        if data != 'data':
+        if data is not None and data != 'data':
             field += '_' + data.split('.')[0]
             ri = data.split('.')[1]
         else:

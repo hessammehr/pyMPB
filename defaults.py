@@ -170,6 +170,9 @@ template = '''%(initcode)s
 
 fig_size = (12, 9)
 
+draw_bands_formatstr = 'o-'
+hide_band_gap = False;
+
 # default kwargs for the tick labels for the k-vec-axis of band diagrams:
 # (will be forwarded to underlying matplotlib.text.Text objects)
 xticklabels_kwargs={'rotation':0, 'horizontalalignment':'center'}
@@ -272,6 +275,7 @@ def default_onclick(event, bandplotter):
 # parts be on top of each other? Otherwise, they go next to each other:
 field_dist_vertical_cmplx_comps=True
 field_dist_filetype = 'pdf'
+
 
 contour_lines = {'colors':'k',
                  'linestyles':['dashed','solid'],

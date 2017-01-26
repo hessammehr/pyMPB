@@ -353,20 +353,20 @@ class Simulation(object):
         # :dataset for each one.
         # -> not very nice. Maybe it is time to implement a Python
         # function to directly read and export the h5 files.
-        log.info("and then 4 times h5topng for each field component:")
-        for ri in ['.r', '.i']:
-            dct = dict(self.__dict__, 
-               h5_file=defaults.temporary_h5 + ':<xyz>' + ri,
-               eps_file=defaults.temporary_epsh5,
-               output_file='pngs_<mode>/<filename>[.<xyz>]' + ri + '.png',
-               output_file_no_ovl='pngs_<mode>_no_ovl/<filename>[.<xyz>]' +
-                   ri + '.png')
-            if self.geometry.is3D:
-                log.info(defaults.fieldh5topng_call_3D % dct)
-                log.info(defaults.fieldh5topng_call_3D_no_ovl % dct)
-            else:
-                log.info(defaults.fieldh5topng_call_2D % dct)
-                log.info(defaults.fieldh5topng_call_2D_no_ovl % dct)
+        log.info("and then two times h5topng for each field component in h5:")
+        dct = dict(self.__dict__,
+           h5_file=defaults.temporary_h5 + ':[<xyz>.<ri>|data]',
+           eps_file=defaults.temporary_epsh5,
+           output_file='pngs_<mode>/<filename>[.<xyz>.<ri>|.data]' +
+                       '.png',
+           output_file_no_ovl='pngs_<mode>_no_ovl/<filename>['
+                              '.<xyz>.<ri>|.data]' + '.png')
+        if self.geometry.is3D:
+            log.info(defaults.fieldh5topng_call_3D % dct)
+            log.info(defaults.fieldh5topng_call_3D_no_ovl % dct)
+        else:
+            log.info(defaults.fieldh5topng_call_2D % dct)
+            log.info(defaults.fieldh5topng_call_2D_no_ovl % dct)
         if defaults.delete_h5_after_postprocessing:
             log.info("and finally delete the h5 file.")
         else:
@@ -817,7 +817,7 @@ class Simulation(object):
             x_axis_hint=x_axis_hint,
             title=title,
             crop_y=crop_y,
-            band_gaps=not projected,
+            band_gaps=not projected and not defaults.hide_band_gap,
             light_cone=(
                 self.geometry.substrate_index if self.geometry.is3D
                 else False),
@@ -829,7 +829,7 @@ class Simulation(object):
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
 
         if save:
-            filename = jobname + '_bands.pdf'
+            filename = jobname + '_bands.svg'
             log.info('saving band diagram to file %s' % filename)
             plotter.savefig(
                 filename, transparent=True,

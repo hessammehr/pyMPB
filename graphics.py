@@ -200,7 +200,7 @@ def draw_bands(
 
     """
     if custom_plotter is None:
-        plotter = BandPlotter()
+        plotter = BandPlotter(figure_size=defaults.fig_size)
     else:
         plotter = custom_plotter
         plotter.next_plot()
@@ -267,7 +267,7 @@ def draw_bands(
 
         plotter.plot_bands(
             data[:, 5:], data[:, 1:5],
-            formatstr='o-',
+            formatstr=defaults.draw_bands_formatstr,
             x_axis_formatter=x_axis_formatter,
             label=mode.upper(),
             crop_y=crop_y,
