@@ -34,6 +34,18 @@ import log
 import defaults
 
 
+class ContinuousStepwiseLinearFunction:
+    """Simple class using numpy.interp to create a continuous stepwise linear
+    function from a set of points."""
+    def __init__(self, xp, yp):
+        # make copies:
+        self._xp = np.array(xp)
+        self._yp = np.array(yp)
+
+    def __call__(self, x):
+        return np.interp(x, self._xp, self._yp)
+
+
 def occupancy_radius(occupancy, n, cell_area=1.0):
     return sqrt(cell_area*occupancy/n/pi)
 

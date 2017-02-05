@@ -135,7 +135,8 @@ def draw_bands(
         custom_plotter=None, title='', crop_y=True,
         band_gaps=True, light_cone=False, projected_bands=False,
         mask_proj_bands_above_light_line=False,
-        add_epsilon_as_inset=False, color_by_parity=False):
+        add_epsilon_as_inset=False, color_by_parity=False,
+        interactive_mode=False):
     """Plot dispersion relation of all bands calculated along all k
     vectors.
 
@@ -195,6 +196,9 @@ def draw_bands(
     :param color_by_parity: Specify 'y' or 'z' to color the plot lines
     with the data taken from the parity files
     <jobname>_<mode>[z/y]parity.csv.
+    :param interactive_mode: This is useful if the plot is not intended for
+    saving, but for showing on the screen. Then defaults.default_onclick()
+    will be called if the user clicks on a graph in the figure.
     :return: a created BandPlotter instance (if *custom_plotter*) was
     None, or the *custom_plotter*.
 
@@ -271,6 +275,7 @@ def draw_bands(
             x_axis_formatter=x_axis_formatter,
             label=mode.upper(),
             crop_y=crop_y,
+            picker = interactive_mode * 3,
             color_by_parity=parities)
 
         if projected_bands:

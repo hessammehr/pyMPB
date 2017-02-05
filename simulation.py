@@ -823,13 +823,14 @@ class Simulation(object):
                 else False),
             projected_bands=projected,
             add_epsilon_as_inset=add_epsilon_as_inset,
-            color_by_parity=color_by_parity
+            color_by_parity=color_by_parity,
+            interactive_mode=show
         )
         # use returned plotter to add to figure:
         #graphics.draw_dos(jobname, self.modes, custom_plotter=plotter)
 
         if save:
-            filename = jobname + '_bands.svg'
+            filename = jobname + '_bands.pdf'
             log.info('saving band diagram to file %s' % filename)
             plotter.savefig(
                 filename, transparent=True,

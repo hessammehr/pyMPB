@@ -26,7 +26,7 @@ import numpy as np
 from fractions import Fraction
 import re
 import defaults
-from utility import strip_format_spec
+from utility import strip_format_spec, ContinuousStepwiseLinearFunction
 import log
 
 
@@ -72,23 +72,24 @@ class CustomAxisFormatter(mticker.Formatter):
                  axis_label=''):
         """A formatter to set custom ticks on a matplotlib.axis.
 
-        Keyword arguments:
-            ticks      : a sequence with the major tick positions
-                         (first kvec is at position 0, the next at 1 and
-                         so on),
-            labels     : a sequence of strings for the major tick labels
-                         (must have same length than ticks).
-            hover_data : If provided, the corresponding item in this sequence
-                         will be shown in the plot's status bar if the mouse
-                         hovers over the plot. Must have the same number of
-                         entries than total number of indices in x.
-                         Useful e.g. if this is a list of all k-vectors.
-                         If set to None (default), it will just show the
-                         x-position.
-                         Alternatively, this can also be a callable function
-                         which accepts one argument, the x index, and returns
-                         the data to be shown (with a __str__ method).
-            axis_label : the label printed underneath the x-axis (a string).
+        :param ticks:
+            a sequence with the major tick positions (first kvec is at
+            position 0, the next at 1 and so on),
+        :param labels:
+            a sequence of strings for the major tick labels (must have
+            same length than ticks).
+        :param hover_data:
+            If provided, the corresponding item in this sequence will be
+            shown in the plot's status bar if the mouse hovers over the
+            plot. Must have the same number of entries than total number
+            of indices in x. Useful e.g. if this is a list of all
+            k-vectors. If set to None (default), it will just show the
+            x-position. Alternatively, this can also be a callable
+            function which accepts one argument, the x index, and
+            returns the data to be shown (with a __str__ method).
+        :param axis_label:
+            the label printed underneath the x-axis (a string).
+
         """
 
         # make sure both ticks and labels have the same length:
@@ -99,8 +100,8 @@ class CustomAxisFormatter(mticker.Formatter):
         elif numlabels > numticks:
             labels = labels[:numticks]
 
-        self._ticks = ticks
-        self._labels = labels
+        self._ticks = np.array(ticks)
+        self._labels = labels[:]
         self._hover_data = None
         self._hover_func = lambda x: x
         self._hover_func_is_default = True
@@ -124,8 +125,7 @@ class CustomAxisFormatter(mticker.Formatter):
             # case 1, mpl is building the ticks labels:
             return self._labels[tickindex]
 
-
-    def _get_hover_data_from_position(self, x):
+    def _get_hover_data_from_continuous_index(self, x):
         # TODO: here, we could return the linear interpolation between
         # the individual data points, if they are numbers or vectors of
         # numbers, because x is a continuous float, but for now,
@@ -135,31 +135,34 @@ class CustomAxisFormatter(mticker.Formatter):
         else:
             return x
 
-
     def get_tick_positions(self):
         """Return the current tick positions, i.e. the sequence with the
         major tick positions.
 
         """
-        return self._ticks
+        return np.array(self._ticks)  # make copy
 
-
-    def set_tick_positions(self, new_ticks):
-        """Set the major tick positions to new values. 
+    def tweak_tick_positions(self, new_ticks):
+        """Set the major tick positions to new values.
+        The hover data will be transformed accordingly.
         
         :param new_ticks:
             A sequence with the new positions of the major axis ticks. Must
             have the same length as the previous _ticks-sequence.
-        
+
         """
         if not hasattr(new_ticks, '__len__'):
             raise TypeError('new_ticks must be a sequence.')
         if not len(new_ticks) == len(self._ticks):
             raise ValueError('new_ticks must be of same length as' + 
                              ' previous ticks.')
-        self._ticks = new_ticks
-        
-    
+        # prepare the mapping from the new coordinates to the old ones:
+        hmap = ContinuousStepwiseLinearFunction(new_ticks, self._ticks)
+        # route _hover_func through this mapping:
+        oldfun = self._hover_func
+        self._hover_func = lambda x: oldfun(hmap(x))
+        self._ticks = np.array(new_ticks)  # make copy
+
     def set_hover_data(self, hover_data):
         """Set the data that will be shown when the mouse hovers over
         the plot.
@@ -187,8 +190,8 @@ class CustomAxisFormatter(mticker.Formatter):
         elif callable(hover_data):
             self._hover_func = hover_data
         else:
-            self._hover_data = hover_data[:]
-            self._hover_func = self._get_hover_data_from_position
+            self._hover_data = np.array(hover_data)  # make copy
+            self._hover_func = self._get_hover_data_from_continuous_index
 
     def get_longest_label_length(self):
         """Return the length of the longest string in list of axis labels."""
@@ -354,9 +357,11 @@ class KVectorAxisFormatter(CustomAxisFormatter):
             return
         if axis_length:
             step = max(1, np.floor(axis_length / (self._num_ticks - 1)))
-            self._ticks = np.arange(0, axis_length + 1, step)
+            self._ticks = np.arange(0, axis_length + 1, step, dtype=np.int32)
 
-        vecs = [self._get_hover_data_from_position(x) for x in self._ticks]
+        vecs = [
+            self._get_hover_data_from_continuous_index(x)
+            for x in self._ticks]
         if self._fractions:
             vecs = self._make_fraction_str(vecs)
         for vec in vecs:
@@ -395,7 +400,9 @@ class KSpaceAxisFormatter(CustomAxisFormatter):
         """
         if kspace.has_labels():
             ticks = np.arange(
-                0, kspace.count_interpolated(), step=kspace.k_interpolation+1
+                0, kspace.count_interpolated(),
+                step=kspace.k_interpolation+1,
+                dtype=np.int32
             )
             labels = [
                 self._symmetry_point_to_latex.get(l, '${0}$'.format(l))

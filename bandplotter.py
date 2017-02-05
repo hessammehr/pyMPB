@@ -1,4 +1,4 @@
-    #Copyright 2014-2016 Juergen Probst
+    #Copyright 2014-2017 Juergen Probst, Carlo Barth
     #This program is free software; you can redistribute it and/or modify
     #it under the terms of the GNU General Public License as published by
     #the Free Software Foundation; either version 3 of the License, or
@@ -70,6 +70,11 @@ class BandPlotter:
         # The last scatter plot that was added to overlay parity data on a
         # band diagram. Needed for when a color bar is added:
         self._last_parity_scatter = None
+
+        self._x_data = None
+        self._last_data = None
+        self._last_kdata = None
+        self._x_axis_corrected = False
         self.next_plot()
 
     def _onpick(self, event):
@@ -96,6 +101,10 @@ class BandPlotter:
         self._ax.grid(True)
         self._axes.append(self._ax)
 
+        self._x_data = None
+        self._last_data = None
+        self._last_kdata = None
+        self._x_axis_corrected = False
         self._miny = float('inf')
         self._maxy = -float('inf')
         self._crop_min_y_val = None
@@ -153,16 +162,16 @@ class BandPlotter:
             ax.change_geometry(rows, numcols, i + 1)
     
     def _calc_corrected_x_values(self, k_data):
-        """Calculate new x-axis values based on the Euclidian point distance of
-        the k-vectors."""
-        def pointDistance(p1, p2):
-            """Euclidian point distance in 3D space"""
-            return np.sqrt( np.sum( np.square( p2-p1 ) ) )
+        """Calculate new x-axis values based on the Euclidean point
+        distance of the k-vectors."""
+        def point_distance(p1, p2):
+            """Euclidean point distance in 3D space"""
+            return np.sqrt(np.sum(np.square(p2 - p1)))
         
-        x_vals = np.zeros( (len(k_data)) )
-        k_data_vecs = k_data[:,:-1] # the kmag/2pi column is irrelevant here
-        for i,k in enumerate(k_data_vecs[:-1]):
-            x_vals[i+1] = pointDistance(k, k_data_vecs[i+1] )+x_vals[i]
+        x_vals = np.zeros(len(k_data))
+        k_data_vecs = k_data[:, :-1]  # the kmag/2pi column is irrelevant here
+        for i, k in enumerate(k_data_vecs[:-1]):
+            x_vals[i + 1] = point_distance(k, k_data_vecs[i + 1]) + x_vals[i]
         return x_vals
     
     def plot_bands(
@@ -204,7 +213,7 @@ class BandPlotter:
         one is added.
         
         If *correct_x_axis* is set to True (default), the bands are plotted
-        versus x-values which are equidistant according to the Euclidian
+        versus x-values which are equidistant according to the Euclidean
         distance between the k-vectors. That way distortions are avoided which
         occur when plotting versus the k-index.
 
@@ -217,6 +226,17 @@ class BandPlotter:
         """
         if len(banddata) == 0:
             return
+
+        # If plot_bands has been called before in this subplot, self._x_data
+        # will be set. In that case, the user can't change his mind anymore
+        # whether he want to correct the x-axis or not:
+        if self._x_data is not None:
+            if correct_x_axis != self._x_axis_corrected:
+                log.warning("bandplotter.plot_bands: In a previous call to "
+                            "plot_bands, correct_x_axis had a differnt value "
+                            "than in this call. The previous value will be "
+                            "used again.")
+                correct_x_axis = self._x_axis_corrected
 
         # Keep reference to last banddata for add_light_cone,
         # fill_between_bands and maybe other:
@@ -286,17 +306,28 @@ class BandPlotter:
             self._last_color = kwargs['c']
         else:
             self._last_color = kwargs['color']
-        
-        if correct_x_axis:
-            x_vals = self._calc_corrected_x_values(k_data)
 
+
+        if correct_x_axis:
             # we need to update the reference to the x_data and the
             # x_axis_formatter ticks accordingly to get the lightcone and the
             # x-axis labels right
-            # TODO: needs to be checked if it works in all cases
-            self._x_data = x_vals
-            x_axis_formatter.set_tick_positions(
-                x_vals[x_axis_formatter.get_tick_positions()])
+            x_vals = self._calc_corrected_x_values(k_data)
+            tick_pos = x_axis_formatter.get_tick_positions()
+            # only need to correct x-axis ticks once:
+            if not self._x_axis_corrected:
+                if tick_pos.dtype != np.int32:
+                    log.warning(
+                        "bandplotter.plot_bands: Cannot correct x-axis. "
+                        "It seems the x_axis_formatter is customized "
+                        "with non-integer tick positions.")
+                else:
+                    x_axis_formatter.tweak_tick_positions(x_vals[tick_pos])
+                    self._x_axis_corrected = True
+
+            # only continue if the x-axis' correction was successful:
+            if self._x_axis_corrected:
+                self._x_data = x_vals
 
         self._ax.plot(
             self._x_data, banddata, formatstr, label=label, **kwargs)

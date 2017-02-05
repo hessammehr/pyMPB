@@ -210,10 +210,10 @@ ticks_fractions = True
 tick_max_denominator = 1000
 
 # If correct_x_axis is set to True, the bands are plotted versus
-# x-values which are equidistant according to the Euclidian distance
+# x-values which are equidistant according to the Euclidean distance
 # between the k-vectors. That way distortions are avoided which occur
 # when plotting versus the k-index.
-correct_x_axis = not True
+correct_x_axis = True
 
 color_by_parity_marker_size = 60
 
@@ -252,12 +252,13 @@ def default_onclick(event, bandplotter):
     
     print(thisline.get_label() + ' mode(s): ', end='')
     for i in ind:
-        kindex = xdata[i]
+        kindex = thisline.data[2, i]
+        xaxispos = xdata[i]
         freq = ydata[i]
         bandindex = thisline.data[3, i]
         parity = thisline.data[4, i]
         s = 'bandnum={0}, k_index={1:.0f}, k_vec={2}, freq={3}'.format(
-            bandindex + 1, kindex, xaxisformatter(kindex), freq)
+            bandindex + 1, kindex, xaxisformatter(xaxispos), freq)
         if np.isfinite(parity):
             s += ', parity={0}'.format(parity)
         print(s + '; ', end='')
