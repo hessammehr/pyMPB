@@ -277,8 +277,8 @@ def get_intersection_knum(freq_left, freq_right, freq_intersection):
     a horizontal line at freq_intersection, return the knum (x-value) where 
     they intersect. It is not checked whether they intersect, so please take 
     care of that.
-    If you use this to get the intersection between to other consecutive knums,
-    don't forget to add the left knum to the result.
+    If you use this to get the intersection between two other consecutive
+    knums, don't forget to add the left knum to the result.
 
     """
     # freq_intersection = (freq_right - freq_left) * xi + freq_left

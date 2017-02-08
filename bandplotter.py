@@ -405,7 +405,7 @@ class BandPlotter:
 
     def add_light_cone(
             self, index_of_refraction=1, color='gray', alpha=0.5):
-        """Add a line cone to the current subplot.
+        """Add a light cone to the current subplot.
 
         Only works if plot_bands have been called before on this subplot.
         """
@@ -481,7 +481,7 @@ class BandPlotter:
         center = (mx[1] + mn[1]) / 2
         gapsize = h / center
         xcenter = (mx[0] + mn[0]) / 2
-        gaptext=gap_text.format(gapsize * 100)
+        gaptext = gap_text.format(gapsize * 100)
         self._ax.add_artist(
             mpl.text.Text(text=gaptext,
                         x=xcenter, y=center,
@@ -507,13 +507,14 @@ class BandPlotter:
         if from_freq < 0 or to_freq <= 0:
             return
 
-        rightindex = len(self._x_data) - 1
+        left = min(self._x_data)
+        right = max(self._x_data)
 
         if light_line is None:
             # add a rectangle not clipped by light line:
             self.add_filled_polygon(
-                points=[(0, from_freq), (rightindex, from_freq),
-                        (rightindex, to_freq), (0, to_freq)],
+                points=[(left, from_freq), (right, from_freq),
+                        (right, to_freq), (left, to_freq)],
                 color=color,
                 alpha=alpha,
                 gap_text=defaults.default_gaptext)
@@ -540,13 +541,16 @@ class BandPlotter:
             points = []
 
             if not below:
-                points.append((0, from_freq))
+                points.append((self._x_data[0], from_freq))
                 if above:
-                    points.append((0, to_freq))
+                    points.append((self._x_data[0], to_freq))
                 else:
-                    points.append((0, light_line[0]))
+                    points.append((self._x_data[0], light_line[0]))
 
             for i in range(1, len(light_line)):
+                x0 = self._x_data[i - 1]
+                xd = self._x_data[i] - x0
+
                 prev_below = below
                 prev_above = above
                 above = light_line[i] >= to_freq
@@ -557,29 +561,29 @@ class BandPlotter:
                 # Check for transitions to inside, add intersections if needed:
                 if prev_above and not above:
                     points.append((
-                        i - 1 + get_intersection_knum(
+                        x0 + xd * get_intersection_knum(
                             light_line[i - 1], light_line[i], to_freq),
                         to_freq))
                 elif prev_below and not below:
                     # Here we actually start a new polygon, but the points
                     # list should already be empty at this stage.
                     points.append((
-                        i - 1 + get_intersection_knum(
+                        x0 + xd * get_intersection_knum(
                             light_line[i - 1], light_line[i], from_freq),
                         from_freq))
                 # Add point if light freq is in between:
                 if not above and not below:
-                    points.append((i, light_line[i]))
+                    points.append((self._x_data[i], light_line[i]))
                 # Check for transitions to outside, add intersections if needed:
                 elif not prev_above and above:
                     points.append((
-                        i - 1 + get_intersection_knum(
+                        x0 + xd * get_intersection_knum(
                             light_line[i - 1], light_line[i], to_freq),
                         to_freq))
                 elif not prev_below and below:
                     # Here we close the polygon.
                     points.append((
-                        i - 1 + get_intersection_knum(
+                        x0 + xd * get_intersection_knum(
                             light_line[i - 1], light_line[i], from_freq),
                         from_freq))
                     # Add the polygon to the plot:
@@ -597,9 +601,9 @@ class BandPlotter:
             # After we walked through the light line frequencies, we still
             # might need to close the polygon at right side:
             if above:
-                points.append((rightindex, to_freq))
+                points.append((right, to_freq))
             if not below:
-                points.append((rightindex, from_freq))
+                points.append((right, from_freq))
 
             # Add the polygon to the plot:
             self.add_filled_polygon(
@@ -688,7 +692,11 @@ class BandPlotter:
                     # do we need to add an intersection point first?
                     for j, (ki, fi) in reversed(list(enumerate(ipts))):
                         if k > ki:
-                            pts.append((ki, fi))
+                            pts.append(
+                                (self._x_data[k - 1] * (k - ki) +
+                                    self._x_data[k] * (ki - k + 1),
+                                 fi)
+                            )
                             del ipts[j]
 
                 pts.append((x, data[k, 2 * i]))
