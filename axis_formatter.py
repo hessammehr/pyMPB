@@ -58,13 +58,15 @@ def infer_k_axis_label_from_format_string(format_str):
         return ''
 
     # simplify:
-    kvec = re.sub(r'\(k_x, k_y, k_z\)', r'\\vec{k}', kvec)
+    kvec = re.sub(r'\(k_x\W\s*k_y\W\s*k_z\)', r'\\vec{k}', kvec)
 
     if '$' in kvec:
         return defaults.default_x_axis_label.format(kvec)
     else:
         # add latex math mode if not contained in format_str yet:
-        return defaults.default_x_axis_label.format('$' + kvec + '$')
+        # (and preserve spaces)
+        return defaults.default_x_axis_label.format(
+            '$' + kvec.replace(' ', '\ ') + '$')
 
 
 class CustomAxisFormatter(mticker.Formatter):

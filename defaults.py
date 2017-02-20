@@ -184,6 +184,9 @@ long_xticklabels_when_longer_than = 12
 # Text added to gaps drawn in the band diagrams,
 # formatted with default_gaptext.format(gapsize_in_percent):
 default_gaptext='gap size: {0:.2f}%'
+# for locale-aware formatting e.g.:
+#default_gaptext='gap size: {0:.4n}%'
+
 default_x_axis_hint = 5 # 5 equally spaced ticks, labeled with k-vector
 default_y_axis_label = r'frequency $\omega a/2\pi c$'
 default_x_axis_label = 'wave vector {0}'
@@ -193,9 +196,11 @@ default_x_axis_label = 'wave vector {0}'
 # direction'? (this last one is good, but we also see the magnitude,
 # when e.g. going from Gamma to M etc.) 'Wave vector point in brilluoin
 # zone'? (too long)
-default_kspace_axis_label = 'wave vector k point'
+default_kspace_axis_label = 'wave vector'
 
-default_kvecformatter_format_str = '({0:.2f}, {1:.2f}, {2:.2f})'
+default_kvecformatter_format_str = '({0:.2f}  {1:.2f}  {2:.2f})'
+# make it locale-aware:
+#default_kvecformatter_format_str = '({0:.2n}  {1:.2n}  {2:.2n})'
 # other possibilities:
 #default_kvecformatter_format_str = r'$\binom{{ {0} }}{{ {1} }}$'
 # unfortunately, \stackrel[3]{}{}{} does not work, so it looks bad:
@@ -231,7 +236,7 @@ add_epsilon_as_inset = False
 #     'center'       : 10,
 epsilon_inset_location = 4
 epsilon_inset_zoom = 0.5
-epsilon_inset_transpose = True
+epsilon_inset_transpose = False
 
 
 def default_onclick(event, bandplotter):
@@ -284,3 +289,10 @@ contour_lines = {'colors':'k',
 contour_plain = {'linewidths':1.0}
 contour_filled = {}
 colorbar_style = {'extend':'both','shrink':0.8}
+
+
+
+# uncomment to use locale-aware formatting on the numbers along the y-axis:
+#import matplotlib.pyplot as plt
+#plt.rcParams['axes.formatter.use_locale'] = True
+
