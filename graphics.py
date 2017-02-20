@@ -276,7 +276,8 @@ def draw_bands(
             label=mode.upper(),
             crop_y=crop_y,
             picker = interactive_mode * 3,
-            color_by_parity=parities)
+            color_by_parity=parities,
+            **defaults.draw_bands_kwargs)
 
         if projected_bands:
             fname = '{0}_{1}_projected.csv'.format(jobname, mode)

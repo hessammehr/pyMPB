@@ -171,6 +171,9 @@ template = '''%(initcode)s
 fig_size = (12, 9)
 
 draw_bands_formatstr = 'o-'
+# keyword arguments for band diagram (matplotlib.lines.Line2D properties,
+# see :class:`~matplotlib.lines.Line2D` for details.):
+draw_bands_kwargs = {'linewidth' : 2}
 hide_band_gap = False;
 
 # default kwargs for the tick labels for the k-vec-axis of band diagrams:
